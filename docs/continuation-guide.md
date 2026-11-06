@@ -52,9 +52,13 @@ passenden Receipt-Key mit Signatur. Gewöhnliche Kernel dürfen den Spezial-Outp
 nicht ausgeben. Die neuen Zieloutputs bleiben reguläre vertrauliche Outputs.
 
 Alice erhält vor der Zahlung eine von Bob signierte, private Zuordnung des
-einmaligen Receipt-Keys zu Bobs Proof-Identität. Sie kann diese nur im
-Streitfall offenlegen. Außenstehende sehen dadurch weder Bobs wiederverwendete
-Identität noch den Zieloutput. Details, Annahmen und noch offene
+einmaligen Receipt-Keys zu Bobs Proof-Identität. Der vorgesehene Wallet-Pfad
+ist eine Stealth-Receipt-Ableitung: Bob gibt einmalig einen Scan-/Spend-
+Descriptor, Alice erzeugt pro Zahlung einen frischen Hint und kann damit einen
+neuen Bob-Receipt-Public-Key bilden; nur Bob leitet den privaten Claim-Key ab.
+Sie kann die Delegation nur im Streitfall offenlegen. Außenstehende sehen
+dadurch weder Bobs wiederverwendete Identität noch den Zieloutput. Details,
+Annahmen und noch offene
 Validierungsfragen stehen in `docs/receipt-claim-design.md`.
 
 ## Geprüfte Upstream-Referenzen
@@ -64,12 +68,50 @@ nicht Teil dieses POC.
 
 | Projekt | Lokaler Pfad | geprüfter Commit |
 | --- | --- | --- |
-| Epic Node | `upstream/epic` | `bd3a8c8c5e957e57574364326dfb17051d0096ae` |
+| Epic Node | `upstream/epic` | Basis `bd3a8c8c5e957e57574364326dfb17051d0096ae`, lokale experimentelle Änderungen vorhanden |
 | Epic Wallet | `upstream/epic-wallet` | `845b3fcf4df12ed0139929c62157015447a9d063` |
 
 Vor jeder Weiterarbeit Commit-Stand und lokale Änderungen mit `git submodule
-status` und `git -C upstream/<projekt> status --short` kontrollieren. Eine
-Analyse muss sich immer auf konkrete Commits beziehen.
+status` und `git -C upstream/<projekt> status --short` kontrollieren. Die
+lokalen Änderungen in `upstream/epic` sind absichtlich uncommittete
+Forschungsarbeit und dürfen nicht an die EpicCash-Upstreams gepusht werden.
+
+## Aktueller experimenteller Core-Stand
+
+Der lokale Node enthält inzwischen einen begrenzten Usernet-Experimentpfad:
+
+- Receipt-Outputs binden gehashte, einmalige Alice-/Bob-Receipt-Public-Keys
+  und einen 33-Byte-Stealth-Hint in die Output-Identität ein.
+- Der Core testet eine experimentelle ECDH-/Tweak-Ableitung: Alice erzeugt
+  daraus einen frischen Bob-Receipt-Public-Key; Bob erhält aus demselben Hint
+  den passenden privaten Key. Eine Epic-Wallet verwendet diese Primitive noch
+  nicht beim echten Chain-Scan.
+- Alice und Bob leiten zusätzlich denselben, domain-separierten Spend-Blind
+  für den Receipt-Output ab. Der lokale Core-Roundtrip baut damit einen
+  gültigen Receipt-Range-Proof, Bob rewound dessen Betrag und erzeugt eine
+  vollständig validierbare BobClaim-Transaktion inklusive Kernel-Summe.
+- Zwei Kernel-Features (`AliceReclaim`, `BobClaim`) transportieren eine
+  domain-separierte Receipt-Signatur, welche Original-Commitment,
+  Kernel-Excess, Fee und Pfad bindet.
+- Die Transaktionsprüfung erzwingt aktuell die Eins-zu-eins-Zuordnung eines
+  Receipt-Inputs zu einem passenden Resolution-Kernel sowie den registrierten
+  Key-Hash. Normale Kernel können einen Receipt-Input daher nicht mehr allein
+  auflösen.
+- Der Pfad wird außerhalb von `UserTesting` abgelehnt. Die bestehenden
+  normalen Features bleiben unverändert.
+- Der TxHashset-UTXO-View und der Spend-Pfad vergleichen Receipt-Inputs mit
+  der vollständigen MMR-Output-Identität, nicht nur mit dem Commitment. Der
+  Mempool validiert die Receipt-Regeln vor seiner bestehenden Chain-UTXO-Prüfung.
+
+Gezielt geprüft wurden Core-Receipt-Tests, einschließlich eines vollständigen
+Receipt-Output-zu-BobClaim-Transaktionsroundtrips, `epic_chain`-Library-Tests
+und der bestehende Pool-Integrationstest. Das ist lediglich eine lokale
+Test-Aussage und keine End-to-End-Konsensvalidierung.
+
+Noch fehlt: Durchlauf durch Chain/TxHashset, Mempool, Blockerzeugung,
+Netzwerkversionierung, Wallet-API und ein echter Usernet-Ablauf. Bis diese
+Schichten implementiert und getestet sind, dürfen die neuen Formate weder als
+netzwerkfähig noch als sicher bezeichnet werden.
 
 ## Zentraler Befund
 

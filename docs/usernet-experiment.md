@@ -2,13 +2,37 @@
 
 Status: Infrastrukturentwurf. Dieser Ablauf nutzt ausschließlich das lokale
 `upstream/epic`-Subprojekt und verbindet sich nicht mit Mainnet oder Floonet.
-Er implementiert noch keinen Receipt-Claim-Konsenspfad.
+Er enthält einen lokalen, experimentellen Receipt-Claim-Konsenspfad. Dieser
+ist nur für Usernet vorgesehen, uncommittet und weder auditiert noch
+netzwerk-/mainnet-kompatibel.
 
 ## Vorhandene Unterstützung
 
 Der vorhandene Node unterstützt `--usernet`, das intern
 `ChainTypes::UserTesting` auswählt. Dafür sind lokale Standardendpunkte
 vorgesehen:
+
+## Terminal-Demo ohne Wallet
+
+Der lokale Core enthält eine direkte Terminal-Demo für den Stealth-Receipt-
+Ableitungspfad. Sie erzeugt keinen Block, baut aber eine gültige lokale
+Core-Transaktion: Alice erstellt einen Receipt-Output mit gültigem Range Proof;
+Bob scannt den Hint, leitet Shared-Blind und Claim-Key ab, rewound den Betrag
+und baut einen ein-input/ein-output BobClaim. Die vollständige
+`Transaction::validate(...)`-Prüfung erfolgt im Usernet-Modus:
+
+```sh
+cargo run -p epic_core --example receipt_stealth_demo
+```
+
+Dies ist kein Ersatz für Wallet-Scan, UTXO-/TxHashset-Verbrauch oder
+Usernet-Block-End-to-End-Tests.
+
+Der Core-Builder `libtx::build::receipt_output(...)` prüft weiterhin nur das
+Receipt-Output-Format mit einem normalen Keychain-Blind. Die Terminal-Demo
+nutzt zusätzlich die klar als Forschungs-API markierten Builder für den
+Shared-Blind-Output und die BobClaim-Transaktion. Sie sind nicht wallet- oder
+netzwerkreif.
 
 | Dienst | Standard |
 | --- | --- |

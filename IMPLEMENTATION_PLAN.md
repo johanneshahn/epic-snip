@@ -222,6 +222,11 @@ Epic-Konsens.
 4. Einen separaten Wallet-Entwurf für Descriptor-Erzeugung, Erkennung, Claim,
    Refund, Schlüsselableitung und Wiederherstellung erarbeiten. Der bestehende
    Slate-Ablauf ist interaktiv und erfüllt diese Anforderungen nicht automatisch.
+   Der bevorzugte Entwurf ist ein Stealth-Receipt-Descriptor: Alice erzeugt
+   pro Zahlung einen frischen öffentlichen Hint und einen neuen Bob-
+   Receipt-Public-Key, während ausschließlich Bob den entsprechenden privaten
+   Claim-Key ableitet. Ein gemeinsamer privater Authenticator-/HD-Seed ist
+   ausgeschlossen, da er Alice einen BobClaim ermöglichen würde.
 5. Aktivierung, Migration sowie Vektor-, Negativ- und Kompatibilitätstests
    definieren.
 
