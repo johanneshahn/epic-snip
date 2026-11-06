@@ -157,11 +157,15 @@ implementiert und durch Core-Unit-Tests abgedeckt:
 - Receipt-Features werden in dieser experimentellen Stufe außerhalb des
   Usernet-Modus abgelehnt.
 
-Dies ist noch keine vollständige Chain-Integration: P2P-Versionierung,
-Blockerzeugung und Wallet-Erzeugung bzw. -Scan sind noch nicht als
-End-to-End-Feature getestet. Insbesondere folgt aus den Unit-Tests keine
-Aussage zur Konsenssicherheit oder zur sicheren Aktivierung in einem
-bestehenden Netzwerk.
+Ein lokaler Chain-Integrationstest erzeugt einen Usernet-Genesisblock, mint
+eine reife Test-Coinbase, nimmt Alice' Receipt-Funding-Transaktion in einen
+Block auf und nimmt Bobs Claim in einem späteren Block auf. Er prüft danach,
+dass der Receipt-UTXO verbraucht, Bobs Zieloutput unspent und die vollständige
+TxHashset-Validierung erfolgreich ist. P2P-Versionierung, Mempool-Admission,
+laufende Node-/Miner-Integration sowie Wallet-Erzeugung, Scan und Recovery
+sind weiterhin nicht als End-to-End-Feature getestet. Aus diesem lokalen Test
+folgt keine Aussage zur Konsenssicherheit oder zur sicheren Aktivierung in
+einem bestehenden Netzwerk.
 
 `libtx::build::receipt_output(...)` ist weiterhin nur ein Format-Builder mit
 normalem Keychain-Blind. Daneben existieren ausdrücklich als Forschungs-API
@@ -177,7 +181,8 @@ Spend-Pfad rekonstruieren beim MMR-Vergleich den vollständigen
 UTXO-Identität; ein Input mit richtigem Commitment, aber anderen Receipt-Hashes
 wird abgelehnt. Der bestehende Mempool führt vor der UTXO-Prüfung bereits
 `tx.validate(...)` aus und übernimmt damit die Receipt-Claim-Validierung.
-Vollständige Block- und Usernet-End-to-End-Tests stehen weiterhin aus.
+Der lokale Block-/TxHashset-Roundtrip ist vorhanden; ein laufender
+Mehrprozess-Usernet-Test mit Mempool und Miner steht weiterhin aus.
 
 ## Was öffentlich und privat bleibt
 

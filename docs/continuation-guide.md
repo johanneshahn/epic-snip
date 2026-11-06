@@ -90,6 +90,10 @@ Der lokale Node enthält inzwischen einen begrenzten Usernet-Experimentpfad:
   für den Receipt-Output ab. Der lokale Core-Roundtrip baut damit einen
   gültigen Receipt-Range-Proof, Bob rewound dessen Betrag und erzeugt eine
   vollständig validierbare BobClaim-Transaktion inklusive Kernel-Summe.
+- Ein lokaler `epic_chain`-Integrationstest mined Alice' Funding und Bobs
+  Claim in zwei aufeinanderfolgenden Usernet-Testblöcken. Er prüft Receipt-
+  UTXO-Verbrauch, Bobs unspent Zieloutput und vollständige TxHashset-
+  Validierung.
 - Zwei Kernel-Features (`AliceReclaim`, `BobClaim`) transportieren eine
   domain-separierte Receipt-Signatur, welche Original-Commitment,
   Kernel-Excess, Fee und Pfad bindet.
@@ -108,9 +112,9 @@ Receipt-Output-zu-BobClaim-Transaktionsroundtrips, `epic_chain`-Library-Tests
 und der bestehende Pool-Integrationstest. Das ist lediglich eine lokale
 Test-Aussage und keine End-to-End-Konsensvalidierung.
 
-Noch fehlt: Durchlauf durch Chain/TxHashset, Mempool, Blockerzeugung,
-Netzwerkversionierung, Wallet-API und ein echter Usernet-Ablauf. Bis diese
-Schichten implementiert und getestet sind, dürfen die neuen Formate weder als
+Noch fehlt: Mempool-Admission, Netzwerkversionierung, Wallet-API und ein
+laufender Mehrprozess-Usernet-Ablauf mit Node und Miner. Bis diese Schichten
+implementiert und getestet sind, dürfen die neuen Formate weder als
 netzwerkfähig noch als sicher bezeichnet werden.
 
 ## Zentraler Befund

@@ -89,6 +89,22 @@ akzeptieren bzw. ablehnen:
    ablehnen.
 5. Falschen Receipt-Key, falsche Signatur, Replay und falsches Commitment
    ablehnen.
+
+## Automatisierter lokaler Chain-Roundtrip
+
+Der Test `chain/tests/receipt_claim_roundtrip.rs` deckt bereits einen echten
+lokalen Chain-Ablauf ohne Netzwerk ab: Er mint eine reife Usernet-Testcoinbase,
+mined Alice' Receipt-Funding-Transaktion, bestätigt den Receipt-UTXO, mined
+Bobs Claim in einem Folgeblock und prüft UTXO-Verbrauch, Zieloutput sowie die
+vollständige TxHashset-Validierung.
+
+```sh
+cargo test -p epic_chain --test receipt_claim_roundtrip
+```
+
+Der Test startet keinen Node, keine Wallet und keinen Mempool. Daher ersetzt
+er keinen Mehrprozess-Usernet-Test und belegt weder P2P- noch Mainnet-
+Kompatibilität.
 6. Nachfolgeblöcke minen und prüfen, dass Kernel-Beweise erhalten bleiben,
    während Cut-through weiterhin für normale Outputs arbeitet.
 
