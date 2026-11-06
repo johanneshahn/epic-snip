@@ -188,3 +188,78 @@ Das README und jedes Architekturpapier müssen klar festhalten:
 - README beschreibt Start, Test und Grenzen.
 - Bedrohungsmodell und offene Fragen sind vorhanden.
 - Kein Code, Dokument oder Test behauptet Konsenskompatibilität oder reale kryptografische Sicherheit.
+
+## Aktualisierung: Upstream-Stand und Integrationsgrenzen
+
+Stand der Prüfung: Die Git-Submodule `upstream/epic` und
+`upstream/epic-wallet` sind als Referenzquellen vorhanden. Sie sind keine
+Produktivabhängigkeiten des POC und ihre lokalen Commit-Hashes müssen vor
+jeder Design- oder Implementierungsarbeit dokumentiert werden.
+
+Der POC enthält zusätzlich zu seinem Ed25519-Zustandsmodell isolierte Tests
+für Pedersen-Commitments und AgSig-Signaturen. Der Wrapper in `src/crypto.rs`
+ist weder eine Epic-Transaktion noch Konsenscode; die bisherigen Einschränkungen
+des POC gelten unverändert.
+
+Die aktuelle Krypto-Integration verwendet eine revisionsgepinnte
+Git-Abhängigkeit auf `EpicCash/rust-secp256k1-zkp`. Vor einer Weitergabe sind
+Herkunft, Revision, Lizenz und eine reproduzierbare Offline-Strategie zu
+prüfen und zu dokumentieren.
+
+### Phase 7: Upstream- und Konsenslückenanalyse
+
+Diese Phase ist ein Entwurfs- und Prüfauftrag, keine Freigabe zur Änderung des
+Epic-Konsens.
+
+1. Vertragsdaten, Berechtigungsnachweise und ihre Bindung an einen konkreten
+   Output spezifizieren, einschließlich Serialisierung und Hashing.
+2. Einen neuen konsensvalidierten Pfad spezifizieren, falls erforderlich. Im
+   geprüften Epic-Code existieren nur die Output-Features `Plain` und
+   `Coinbase`. `HeightLocked` sperrt einen gesamten Kernel, erzwingt aber
+   keinen Bob-Claim-/Alice-Refund-Pfad für einen einzelnen Output.
+3. Auswirkungen auf `core`, `chain`, Mempool, UTXO-Index, Cut-through,
+   Aggregation, Reorgs und P2P-Serialisierung analysieren.
+4. Einen separaten Wallet-Entwurf für Descriptor-Erzeugung, Erkennung, Claim,
+   Refund, Schlüsselableitung und Wiederherstellung erarbeiten. Der bestehende
+   Slate-Ablauf ist interaktiv und erfüllt diese Anforderungen nicht automatisch.
+5. Aktivierung, Migration sowie Vektor-, Negativ- und Kompatibilitätstests
+   definieren.
+
+Erfolgskriterium: Eine unabhängig prüfbare Spezifikation der erforderlichen
+Konsens- und Wallet-Änderungen einschließlich offener Sicherheitsannahmen.
+Das ist kein Nachweis für Konsenskompatibilität oder Produktionsreife.
+
+## Aktualisierung: akzeptierte shared-redeemable-Semantik
+
+Für den separaten One-Sided-POC ist kein Refund und kein durch den Konsens
+erzwungener Zustand „pending“ erforderlich. Alice erstellt ohne Antwort von
+Bob einen für Bob erkennbaren Output. Alice und Bob besitzen anschließend
+bewusst eine gemeinsame Spend-Fähigkeit. Bob muss den Output auf einen nur ihm
+bekannten Schlüssel übertragen; erst dessen Bestätigung schließt den
+semi-interaktiven Transfer ab. Bis dahin kann Alice konkurrierend ausgeben. Der
+erste bestätigte Spend gewinnt.
+
+Das gilt hier als akzeptiertes Überweisungsrisiko und nicht als zu verhindernder
+Angriff. Die verbleibende Integrationsfrage ist ausschließlich, wie eine echte
+Epic-Wallet Bobs Erkennungsdaten beim Chain-Scan erhält. Das im POC verwendete
+`PendingEnvelope` ist eine externe Wallet-Nachricht und kein Epic-
+Konsensdatenfeld. Payment Proofs können eine fertige echte Transaktion belegen,
+schaffen aber weder diese Erkennung noch Spend-Berechtigung.
+
+## Nächste Forschungsstufe: privacy-schonender Receipt-Claim
+
+Der Claim soll atomar zugleich (a) den ursprünglichen shared-redeemable Output
+verbrauchen und (b) Alice einen nicht abstreitbaren Bob-Receipt liefern. Der
+dauerhafte Konsensnachweis darf jedoch **nicht** Bobs späteres Ziel-Commitment
+enthalten. Sonst wäre der endgültige Bob-Output öffentlich verknüpft.
+
+Vorgesehen ist daher ein einmaliger Receipt-Key pro Zahlung: Der Spezial-Output
+bindet dessen Hash; der Claim-Kernel legt den Receipt-Key und Bobs Signatur über
+den ursprünglichen Output und Claim offen. Bob gibt seinen endgültigen
+Zieloutput weiterhin als normalen vertraulichen Output aus. Alice bewahrt eine
+vorher von Bob signierte private Zuordnung des Receipt-Keys zu Bobs
+Proof-Identität auf und legt sie nur bei Bedarf vor.
+
+Der Entwurf verlangt mindestens neue Output- und Kernel-Features sowie eine
+Konsensaktivierung. Er ist nicht implementiert, nicht sicherheitsbewiesen und
+nicht als Epic-kompatibel behauptet. Siehe `docs/receipt-claim-design.md`.

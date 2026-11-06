@@ -1,0 +1,6 @@
+[submodule "upstream/epic"]
+	path = upstream/epic
+	url = https://github.com/EpicCash/epic.git
+[submodule "upstream/epic-wallet"]
+	path = upstream/epic-wallet
+	url = https://github.com/EpicCash/epic-wallet.git
