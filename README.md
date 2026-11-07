@@ -1,4 +1,4 @@
-# Epic SNIP POC
+# Epic SNIP — Einseitige Wiederverwendbare Zahlungen
 
 > **Experimenteller Forschungsstand — nicht für reale Gelder.** Der lokale
 > `upstream/epic`-Fork enthält einen Usernet-only Konsensentwurf und ist weder
@@ -6,14 +6,34 @@
 > nicht an EpicCash-Upstreams gepusht und nicht als produktionsreif verstanden
 > werden.
 
-Ein In-Memory-Forschungsprototyp für einen **one-sided shared-redeemable**-
-Ablauf. Bob veröffentlicht einen Scan-Schlüssel. Alice erzeugt für jede
-Zahlung einen Ephemeralschlüssel; Bob erkennt die separat zugestellte
-Wallet-Nachricht und **muss** ihn auf einen neuen eigenen Schlüssel übertragen.
-Erst die bestätigte Übertragung ist der Abschluss des semi-interaktiven
-Transfers. Alice behält bewusst ebenfalls die Spend-Fähigkeit, bis Bob diesen
-Schritt bestätigt hat. Die Bibliothek speichert weder Daten noch verwendet sie
-Netzwerk oder Systemzeit.
+## Oberste Priorität
+
+Dieses Projekt verfolgt **eine** Sache: die vollständige Demonstration des
+in [PROTOCOL.md](PROTOCOL.md) definierten Transaktionsflusses.
+
+Bob veröffentlicht einen **Payment Descriptor** einmalig.
+Alice erstellt daraus **drei unabhängige Zahlungen**
+(ohne Bob, ohne Kommunikation) und bringt sie in der
+lokalen **Usernet-Chain** zur Bestätigung.
+Bob **detektiert** alle drei **durch Scannen der Chain**,
+bestimmt **dass** und **den Betrag**, und **claimt** jede
+in einer **eigenen Transaktion** auf einen
+**ausschließlich von ihm auszahlbaren** Output.
+Alle drei Claims werden in der Usernet-Chain bestätigt.
+
+**Zusätzliche Anforderungen (PROTOCOL.md §3.8, §3.9):**
+- **Alice kann aus der Chain verifizieren**, dass Bob die
+  Zahlungen übernommen hat.
+- **Alice kann die Shared Outputs jederzeit selbst
+  beanspruchen**, solange Bob sie nicht bereits in seine
+  eigenen Outputs übertragen hat. Der erste bestätigte
+  gültige Spend gewinnt (First-Confirmed-Spend-Wins).
+
+Jede andere Arbeit in diesem Repo — die In-Memory-POC unter
+`src/one_sided.rs`, der Receipt-Claim-Forschungspfad unter
+`upstream/epic`, die Attributionsforschung — ist
+**abgeschlossen und überholt durch diese Spezifikation**.
+Sie bleibt als historische Aufzeichnung erhalten.
 
 ## Ausführen
 
@@ -22,52 +42,45 @@ cargo fmt --check
 cargo test
 ```
 
-## Lokaler Epic-Core- und Chain-Roundtrip
+### Ziel-Test (in Arbeit)
 
-Der Fork unter `upstream/epic` implementiert zusätzlich einen klar begrenzten
-Receipt-Claim-Forschungsweg. Alice erstellt einen speziellen Output mit einem
-gemeinsam ableitbaren Blind; Bob scannt dessen Hint, erkennt den Betrag und
-überträgt ihn mit einem `BobClaim`-Kernel auf einen regulären Zieloutput.
+Der zu schreibende Akzeptanz-Integrationstest muss den
+vollständigen 3-Zahlungs-Flow demonstrieren:
+
+```sh
+# (noch nicht vorhanden — folgt aus PROTOCOL.md §5)
+cargo test -p epic_chain --test snip_acceptance
+```
+
+### Bestehende, abgeschlossene Tests (historisch)
 
 ```sh
 cd upstream/epic
 cargo test -p epic_core --lib
 cargo test -p epic_chain --test receipt_claim_roundtrip
+cargo test -p epic_chain --test spend_attribution
 cargo run -p epic_core --example receipt_stealth_demo
 ```
 
-Der Chain-Test mined ausschließlich eine temporäre lokale Usernet-Testchain:
-Receipt-Funding in einem Block, Bob-Claim im Folgeblock, anschließende
-TxHashset-Validierung. Er startet weder P2P noch Wallet, Mempool oder Miner.
-
-Die Public API besteht aus `ReceiverKey`, `OneSidedPayment::create`,
-`ReceiverKey::scan` und `OneSidedLedger`. Die Bezeichnung `PendingEnvelope`
-ist ein technischer Name für die Wallet-Nachricht, nicht ein behaupteter
-Konsensstatus.
+Diese Tests dienen der Recherche und der Überprüfung einzelner
+Bausteine. Gemäß PROTOCOL.md §6 **ersetzen sie nicht** die
+vollständige 3-Zahlungs-Demonstration.
 
 ## Sicherheitsgrenzen
 
-Das POC unter `src/` ist **keine Epic-Cash-Wallet, keine Blockchain und nicht
-konsenskompatibel**. Es gibt keine realen Schlüssel, Gelder oder Netzwerke.
-Der `commitment` ist ein echtes Pedersen Commitment, bietet jedoch im isolierten
-Modell weder Betragsvertraulichkeit im Kontext einer echten Chain noch
-Konsenssicherheit.
+Keine Mainnet-Kompatibilität. Keine echten Gelder. Keine
+Netzwerke. Alle Schlüssel sind ephemere Testmaterialien.
+Die lokale Range-Proof-, Kernel-Signatur- und
+TxHashset-Validierung belegen ausschließlich den
+beschriebenen Usernet-Forschungsumfang.
 
-Der POC leitet eine gemeinsame Spend-Fähigkeit per ECDH ab und nutzt Pedersen
-Commitments und AgSig nur als isolierte Primitiven. Das `PendingEnvelope` ist
-**kein** Epic-Output, kein Slate, Kernel oder Range Proof und wird auch nicht
-in die vorhandene 20-Byte-Range-Proof-Nachricht gepackt.
+## Dokumentation
 
-Für den Fork-Pfad existieren lokale Range-Proofs, Kernel-Signaturen, eine
-vollständig validierte Transaktion und ein Block-/TxHashset-Roundtrip. Es
-fehlen weiterhin P2P-Versionierung, Mempool-Admission, Reorg-Tests,
-Wallet-Schlüsselverwaltung und -Recovery, laufende Node-/Miner-Integration
-sowie eine formale Sicherheitsanalyse und unabhängige Audits. Die Tests
-belegen ausschließlich den beschriebenen lokalen Forschungsumfang. Jede
-produktive Verwendung erforderte eine finale Spezifikation, ein aktiviertes
-Konsensdesign sowie unabhängige kryptografische und Implementierungs-Audits.
+- **Oberste Priorität und Funktionalspezifikation:** [PROTOCOL.md](PROTOCOL.md)
+- **Fortlaufender Status:** [CURRENT_STEP.md](CURRENT_STEP.md)
+- Historisch: [One-sided-POC](docs/one-sided-poc.md), [Receipt-Claim-Entwurf](docs/receipt-claim-design.md), [Kryptografische Grundlage](docs/cryptographic-foundation.md), [Protokollspezifikation (POC)](docs/protocol-spec.md), [Bedrohungsmodell](docs/threat-model.md), [Annahmen](docs/assumptions-and-open-questions.md), [Testplan (POC)](docs/test-plan.md), [Übergabe zur Weiterarbeit](docs/continuation-guide.md), [Usernet-Experiment](docs/usernet-experiment.md), [Spend-Attribution-Forschung](docs/SNIP_SPEND_ATTRIBUTION_RESEARCH.md)
 
-Weitere Details: [One-sided-POC](docs/one-sided-poc.md), [Receipt-Claim-Entwurf](docs/receipt-claim-design.md), [Kryptografische Grundlage](docs/cryptographic-foundation.md), [Protokollspezifikation](docs/protocol-spec.md), [Bedrohungsmodell](docs/threat-model.md), [Annahmen](docs/assumptions-and-open-questions.md), [Testplan](docs/test-plan.md) und die [Übergabe zur Weiterarbeit](docs/continuation-guide.md).
-
-Die geplante lokale Chain-Validierung ist in der
-[Usernet-Experimentanleitung](docs/usernet-experiment.md) dokumentiert.
+Alle Dokumentations-Links auf die historischen Pfade
+gilt: sie beschreiben den **abgeschlossenen**
+Forschungsstand, **nicht** den in PROTOCOL.md
+definierten Zielzustand.

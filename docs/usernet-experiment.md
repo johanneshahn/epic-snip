@@ -1,10 +1,25 @@
-# Isoliertes Epic-Usernet für Receipt-Claim-Experimente
+# Isoliertes Epic-Usernet für SNIP-Experimente
 
 Status: Infrastrukturentwurf. Dieser Ablauf nutzt ausschließlich das lokale
 `upstream/epic`-Subprojekt und verbindet sich nicht mit Mainnet oder Floonet.
 Er enthält einen lokalen, experimentellen Receipt-Claim-Konsenspfad. Dieser
 ist nur für Usernet vorgesehen, uncommittet und weder auditiert noch
 netzwerk-/mainnet-kompatibel.
+
+> **Oberste Priorität.** Die Usernet-Infrastruktur dient der
+> vollständigen 3-Zahlungs-Demonstration gemäß
+> [PROTOCOL.md](../PROTOCOL.md) §5:
+> Bob veröffentlicht einen Payment Descriptor einmalig,
+> Alice erstellt drei unabhängige Zahlungen, alle drei
+> werden in der Usernet-Chain bestätigt, Bob detektiert
+> sie durch Scannen, Bob claimt jede in eigener
+> Transaktion, und die End-Outputs sind
+> ausschließlich von Bob auszahlbar.
+>
+> Ein erfolgreicher isolierter Krypto- oder Konsens-
+> Test **ersetzt nicht** die vollständige
+> 3-Zahlungs-Demonstration
+> ([PROTOCOL.md §6](../PROTOCOL.md)).
 
 ## Vorhandene Unterstützung
 
@@ -82,17 +97,16 @@ Wallet-Sicherung.
 Nach der Core-Erweiterung muss das Usernet mindestens folgende echte Blöcke
 akzeptieren bzw. ablehnen:
 
-1. Spezial-Output mit Alice- und Bob-Receipt-Key-Hash erzeugen.
+1. Spezial-Output mit Bob-Receipt-Key-Hash erzeugen.
 2. Gültigen `BobClaim` minen und dessen Kernel später abrufen.
-3. Gültigen `AliceReclaim` in einem unabhängigen Fall minen.
-4. Gewöhnlichen Kernel für einen Spezial-Input im Mempool und beim Blockprozess
+3. Gewöhnlichen Kernel für einen Spezial-Input im Mempool und beim Blockprozess
    ablehnen.
-5. Falschen Receipt-Key, falsche Signatur, Replay und falsches Commitment
+4. Falschen Receipt-Key, falsche Signatur, Replay und falsches Commitment
    ablehnen.
 
-## Automatisierter lokaler Chain-Roundtrip
+## Automatisierter lokaler Chain-Roundtrip (historisch)
 
-Der Test `chain/tests/receipt_claim_roundtrip.rs` deckt bereits einen echten
+Der Test `chain/tests/receipt_claim_roundtrip.rs` deckt einen echten
 lokalen Chain-Ablauf ohne Netzwerk ab: Er mint eine reife Usernet-Testcoinbase,
 mined Alice' Receipt-Funding-Transaktion, bestätigt den Receipt-UTXO, mined
 Bobs Claim in einem Folgeblock und prüft UTXO-Verbrauch, Zieloutput sowie die
@@ -104,9 +118,34 @@ cargo test -p epic_chain --test receipt_claim_roundtrip
 
 Der Test startet keinen Node, keine Wallet und keinen Mempool. Daher ersetzt
 er keinen Mehrprozess-Usernet-Test und belegt weder P2P- noch Mainnet-
-Kompatibilität.
-6. Nachfolgeblöcke minen und prüfen, dass Kernel-Beweise erhalten bleiben,
-   während Cut-through weiterhin für normale Outputs arbeitet.
+Kompatibilität. **Er deckt genau eine Zahlung ab und ist daher nicht die
+in PROTOCOL.md §5 geforderte Akzeptanz-Demonstration.**
 
-Diese Testfälle ergänzen die schnelleren automatisierten Chain-Tests; sie
-ersetzen keine Sicherheits- oder Privacy-Begutachtung.
+## Akzeptanz-Test (in Arbeit)
+
+Der zu schreibende Integrationstest
+`chain/tests/snip_acceptance.rs` muss den vollständigen
+3-Zahlungs-Flow demonstrieren:
+
+1. Bob erzeugt einen Payment Descriptor (einmalig).
+2. Alice erzeugt 3 unabhängige Zahlungen aus dem
+   Descriptor — ohne Bob, ohne Kommunikation.
+3. Alle 3 Zahlungen werden in der lokalen Usernet-Chain
+   bestätigt.
+4. Bob scannt die Chain (ohne Kommunikation mit Alice),
+   detektiert alle 3 Zahlungen und bestimmt die Beträge.
+5. Bob claimt jede der 3 Zahlungen in einer eigenen
+   Transaktion.
+6. Alle 3 Claims werden in der Usernet-Chain bestätigt.
+7. Die End-Outputs sind ausschließlich von Bob
+   auszahlbar (jeder andere Spend-Versuch wird
+   abgewiesen).
+
+```sh
+cargo test -p epic_chain --test snip_acceptance
+```
+
+Gemäß [PROTOCOL.md §6](../PROTOCOL.md): Ein
+erfolgreicher isolierter Krypto- oder Konsens-Test
+**ersetzt nicht** die vollständige Demonstration
+des Transaktionsflusses.
