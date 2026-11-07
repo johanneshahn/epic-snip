@@ -1,4 +1,4 @@
-use epic_snip_poc::{PaymentId, SpendPath, SpendTranscript, crypto::EpicCrypto};
+use epic_snip_poc::{PaymentId, SpendTranscript, crypto::EpicCrypto};
 use secp256k1zkp::key::SecretKey;
 
 fn key() -> SecretKey {
@@ -24,34 +24,34 @@ fn pedersen_commitments_have_the_expected_additive_relation() {
 }
 
 #[test]
-fn aggsig_spend_authorization_is_bound_to_path_and_context() {
+fn aggsig_spend_authorization_is_bound_to_payment_id_and_commitment() {
     let crypto = EpicCrypto::new();
     let spending_key = key();
     let public_key = crypto.public_key(&spending_key).unwrap();
     let commitment = crypto.commit(9, key()).unwrap();
     let payment_id: PaymentId = [7; 32];
-    let claim = SpendTranscript {
+    let transcript = SpendTranscript {
         payment_id,
-        path: SpendPath::Claim,
         commitment,
-        refund_height: 100,
-        transaction_context: [3; 32],
     };
-    let signature = crypto.sign_spend(&claim, &spending_key).unwrap();
+    let signature = crypto.sign_spend(&transcript, &spending_key).unwrap();
 
-    assert!(crypto.verify_spend(&claim, &signature, &public_key));
+    assert!(crypto.verify_spend(&transcript, &signature, &public_key));
+    // A different payment id must not verify.
     assert!(!crypto.verify_spend(
         &SpendTranscript {
-            path: SpendPath::Refund,
-            ..claim
+            payment_id: [8; 32],
+            commitment,
         },
         &signature,
         &public_key
     ));
+    // A different commitment must not verify.
+    let other_commitment = crypto.commit(9, key()).unwrap();
     assert!(!crypto.verify_spend(
         &SpendTranscript {
-            transaction_context: [4; 32],
-            ..claim
+            payment_id,
+            commitment: other_commitment,
         },
         &signature,
         &public_key

@@ -7,26 +7,16 @@ mit echten Geldern.
 
 ## Ausgangspunkt
 
-Der POC modelliert einen lokalen Zustandsautomaten mit zwei Ausgabepfaden:
+Der POC modelliert einen one-sided shared-redeemable-Zahlungsablauf.
+Alice erzeugt ohne Antwort von Bob einen Output, den Bob über einen
+veröffentlichten Scan-Schlüssel und eine externe Wallet-Nachricht erkennen
+kann. Alice und Bob leiten beide eine gemeinsame Spend-Fähigkeit ab. Bob muss
+den Output auf einen ausschließlich von ihm kontrollierten Schlüssel
+übertragen. Erst dessen Bestätigung schließt den semi-interaktiven Transfer ab.
 
-- Bob kann einen `PendingPayment` mit seinem Claim-Schlüssel ausgeben.
-- Alice kann denselben Payment erst ab `refund_height` mit ihrem Refund-Schlüssel
-  ausgeben.
-- Der lokale `Ledger` akzeptiert nur den ersten gültigen Pfad.
-
-Der Code unter `src/` und die Tests unter `tests/` prüfen diese Eigenschaften
-nur im Arbeitsspeicher. Sie modellieren weder einen UTXO-Satz noch eine echte
-Mimblewimble-Transaktion.
-
-## Aktuelle Designentscheidung: one-sided shared-redeemable
-
-Neben dem älteren Claim/Refund-Modell enthält `src/one_sided.rs` einen
-separaten Forschungs-POC. Alice erzeugt ohne Antwort von Bob einen Output, den
-Bob über einen veröffentlichten Scan-Schlüssel und eine externe
-Wallet-Nachricht erkennen kann. Alice und Bob leiten beide eine gemeinsame
-Spend-Fähigkeit ab. Bob muss den Output auf einen ausschließlich von ihm
-kontrollierten Schlüssel übertragen. Erst dessen Bestätigung schließt den
-semi-interaktiven Transfer ab.
+Der Code unter `src/one_sided.rs` und die Tests unter `tests/` prüfen diese
+Eigenschaften nur im Arbeitsspeicher. Sie modellieren weder einen UTXO-Satz
+noch eine echte Mimblewimble-Transaktion.
 
 Es gibt bewusst keinen Konsensstatus „pending“ und keine Anforderung, Alice
 vor dieser verpflichtenden Abschlussübertragung auszusperren. Alice darf vorher

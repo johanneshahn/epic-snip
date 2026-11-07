@@ -2,21 +2,31 @@
 
 ## Angenommene Garantien des Modells
 
-- Der Besitz von Bobs privatem Schlüssel ist für einen Claim nötig.
-- Der Besitz von Alices privatem Schlüssel **und** das Erreichen von `refund_height` sind für einen Refund nötig.
-- Vertragseigenschaften können nicht nach der Signatur verändert werden.
-- Eine Autorisierung ist an einen Spend und den gewählten Pfad gebunden.
-- Der Validator verarbeitet den Verbrauch eines Outputs atomar.
+- Nur der Besitzer des gemeinsamen Blind (Bob nach erfolgreichem Scan) kann
+  den Output claimen.
+- Alice kann den Output konkurrierend ausgeben, solange Bob noch nicht
+  geclaimt hat — dies ist ein bewusster trade-off des nicht-interaktiven
+  Ablaufs.
+- Die AgSig-Autorisierung ist an `payment_id`, Pfad (`claim`/`sender-spend`),
+  Commitment und Ziel-Commitment gebunden.
+- Der `OneSidedLedger` verarbeitet den Verbrauch eines Outputs atomar.
 
 ## Nicht abgedeckt
 
 - Konsens- und Implementierungsfehler in Epic Cash oder Abweichungen durch Forks/Reorgs.
 - Diebstahl oder Verlust von Schlüsseln, kompromittierte Endgeräte und Wallet-Backups.
 - DoS, Zensur, Gebührenmarkt und Mempool-Policy.
-- Betragsvertraulichkeit: `commitment` ist nur ein Platzhalter.
+- Die Zuverlässigkeit des externen `PendingEnvelope`-Zustellkanals: verloren
+  oder manipuliert werden kann das Envelope nicht erkannt werden.
 - Seitenkanäle, Zufallszahlengüte, Serialisierungsfehler und kryptografische Audits.
-- Schutz gegen einen bösartigen Sender vor der Aufnahme eines Outputs in eine reale Blockchain.
+- Schutz gegen einen bösartigen Sender vor der Aufnahme eines Outputs in eine
+  reale Blockchain.
+- Formale Sicherheitsanalyse der ECDH-Blind-Ableitung.
 
 ## Sicherheitskritische Regel
 
-Die zusätzliche Signatur darf in einer echten Chain nicht bloße Metadaten sein. Sie muss Teil der Konsensvalidierung des Input-Pfads sein und dauerhaft an den konkreten Output gebunden werden. Andernfalls könnte Alice vorzeitig ausgeben oder ein Angreifer eine Autorisierung wiederverwenden.
+Die AgSig-Autorisierung darf in einer echten Chain nicht bloße Metadaten
+sein. Sie muss Teil der Konsensvalidierung des Input-Pfads sein und dauerhaft
+an den konkreten Output gebunden werden. Andernfalls könnte ein Angreifer eine
+Autorisierung wiederverwenden oder Alice könnte konkurrierend ausgeben, ohne
+dass Bob dies erkennen kann.

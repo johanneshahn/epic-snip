@@ -11,7 +11,7 @@ use secp256k1zkp::{
 };
 use sha2::{Digest, Sha256};
 
-use crate::{PaymentId, SpendPath, TransactionContext};
+use crate::PaymentId;
 
 /// A local wrapper around the Pedersen and single-signer `AgSig` facilities.
 ///
@@ -31,10 +31,7 @@ pub enum CryptoError {
 #[derive(Clone, Copy, Debug)]
 pub struct SpendTranscript {
     pub payment_id: PaymentId,
-    pub path: SpendPath,
     pub commitment: Commitment,
-    pub refund_height: u64,
-    pub transaction_context: TransactionContext,
 }
 
 impl Default for EpicCrypto {
@@ -77,10 +74,10 @@ impl EpicCrypto {
             .map_err(|_| CryptoError::BackendFailure)
     }
 
-    /// Produces an Epic `AgSig` single-signer signature for a payment path.
+    /// Produces an Epic `AgSig` single-signer signature bound to a transcript.
     ///
-    /// The signature transcript includes the payment identity, path, actual
-    /// Pedersen commitment, refund height, and local transaction context.
+    /// The signature transcript includes the payment identity and the actual
+    /// Pedersen commitment.
     ///
     /// # Errors
     /// Returns [`CryptoError::BackendFailure`] if signing fails.
@@ -127,9 +124,6 @@ fn spend_message(transcript: &SpendTranscript) -> Result<Message, CryptoError> {
     let mut hash = Sha256::new();
     hash.update(b"EPIC-SNIP-POC-v1|aggsig-spend|");
     hash.update(transcript.payment_id);
-    hash.update(transcript.path.tag());
     hash.update(transcript.commitment.as_ref());
-    hash.update(transcript.refund_height.to_le_bytes());
-    hash.update(transcript.transaction_context);
     Message::from_slice(&hash.finalize()).map_err(|_| CryptoError::BackendFailure)
 }

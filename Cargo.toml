@@ -2,15 +2,13 @@
 name = "epic-snip-poc"
 version = "0.1.0"
 edition = "2024"
-description = "Research-only, in-memory model of a claim-or-refund payment"
+description = "Research-only, in-memory model of a one-sided shared-redeemable payment"
 license = "MIT"
 publish = false
 
 [dependencies]
-ed25519-dalek = { version = "2.1", features = ["rand_core"] }
 grin_secp256k1zkp = { git = "https://github.com/EpicCash/rust-secp256k1-zkp.git", rev = "1131a20920576413cd949e012a160561080324c1" }
 rand = "0.9"
-rand_core = { version = "0.6", features = ["getrandom"] }
 sha2 = "0.10"
 
 [lints.rust]
