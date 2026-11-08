@@ -1,56 +1,131 @@
-# Protokoll: One-Sided Shared-Redeemable Payment
+# Protokoll: Einseitige Wiederverwendbare Zahlungen (SNIP)
 
-Status: Forschungsentwurf, Version 2. Keine Konsensspezifikation.
+Status: Funktionale Spezifikation. Keine Konsensspezifikation.
+Nicht für Mainnet, Floonet oder echte Gelder.
 
-## Ziel
+## Oberste Priorität — Akzeptanzkriterium
 
-Alice erzeugt ohne Bobs Online-Beteiligung einen Pending Output, der für
-Bob automatisch erkennbar und von beiden Parteien gemeinsam ausgabbar ist.
-Bob **muss** den erkannten Output auf einen nur ihm bekannten Schlüssel
-übertragen, um den semi-interaktiven Transfer abzuschließen. Alice kann
-konkurrierend ausgeben, bis Bob diese Übertragung vorgenommen hat — ein
-bewusst akzeptiertes Risiko des nicht-interaktiven Ablaufs.
+Jede weitere Dokumentation, jede Designentscheidung und jede Implementierung
+dient diesem einzigen Akzeptanzkriterium. Abweichungen von diesem Kriterium
+sind nur zulässig, wenn sie nachweislich zu mehr Compliance mit §3 führen.
 
-## Vertragsdaten
+**Bob veröffentlicht einen Payment Descriptor genau einmal.**
+Dann, ohne je mit Bob zu kommunizieren oder Bobs Beteiligung
+einzuziehen, erstellt **Alice** **drei unabhängige Zahlungen**
+und bringt sie **alle drei** in der lokalen Usernet-Chain
+zur Bestätigung. **Bob detektiert** alle drei Zahlungen
+**ausschließlich durch Scannen der Chain**. **Bob claimt** jede
+der drei Zahlungen in **eigener Transaktion**. **Alle drei
+Claims** werden **in der Usernet-Chain bestätigt**.
+**Die End-Outputs** sind **ausschließlich von Bob auszahlbar**.
 
-`PendingEnvelope` enthält:
+Jede einzelne Anforderung aus §2 und §3 der funktionalen
+Spezifikation gilt zusätzlich als bindend, soweit sie nicht
+mit diesem Akzeptanzkriterium kollidiert.
 
-| Feld | Zweck |
+## §2 Transaktionsfluss (5 Schritte)
+
+1. **Bob: Payment Descriptor einmalig.**
+   Bob erzeugt sein langfristiges Schlüsselmaterial und
+   veröffentlicht den öffentlichen **Payment Descriptor**.
+   Der Descriptor ist wiederverwendbar: aus ihm kann Alice
+   beliebig viele Zahlungen ableiten, ohne Bob erneut
+   einzubeziehen.
+
+2. **Alice: unabhängige Zahlungen erstellen.**
+   Für jede Zahlung erzeugt Alice eine eigene Transaktion
+   aus dem Descriptor. Bob ist nicht online, nicht an der
+   Erstellung beteiligt, erhält keine Nachricht.
+   Jede Zahlung ist eine separate, unabhängige Transaktion.
+
+3. **Alice: Bestätigung in der Usernet-Chain.**
+   Alice bringt jede der drei Zahlungen in einen Block der
+   lokalen Usernet-Chain und erhält Bestätigung.
+   Die Bestätigung erfolgt ohne Bob.
+
+4. **Bob: Detektion durch Scannen.**
+   Bob scannt die Usernet-Chain. **Ohne irgendeine
+   Kommunikation mit Alice** erkennt er jede der drei
+   Zahlungen als an sich adressiert. Er kann aus der Chain
+   ableiten:
+   - *dass* eine Zahlung an ihn gerichtet ist,
+   - *welchen Betrag* die Zahlung hat.
+   Bob ist während Alices Erstellung offline.
+   Bob muss nicht teilnehmen, *aber* muss er die Zahlungen
+   **finden können**.
+
+5. **Bob: Claim in eigener Transaktion.**
+   Bob claimt jede der drei Zahlungen in einer eigenen
+   Transaktion auf einen Output, der **ausschließlich von
+   Bob auszahlbar** ist.
+   Der Claim enthält **keine** Alice-Beteiligung.
+   Alle drei Claims werden in der Usernet-Chain bestätigt.
+   Die End-Outputs sind ausschließlich Bob's.
+
+## §3 Bindende Anforderungen
+
+| Nr | Anforderung |
 | --- | --- |
-| `payment_id` | SHA-256 über Commitment, Ephemeralschlüssel und Receiver-Schlüssel |
-| `amount` | Zahlungsbetrag (simuliert, keine CT) |
-| `commitment` | Pedersen Commitment `amount * H + blind * G` |
-| `ephemeral_public_key` | Alices ephemeraler öffentlicher Schlüssel `A` |
-| `receiver_public_key` | Bobs langfristiger Scan-Schlüssel `B` |
-| `shared_spend_public_key` | Öffentliches Gegenstück zum gemeinsamen Blind |
+| 3.1 | Bob muss in der Lage sein, eingehende Zahlungen zu **erkennen**, ohne mit Alice zu kommunizieren. |
+| 3.2 | Bob muss in der Lage sein, **Beträge** der an ihn gerichteten Zahlungen zu bestimmen. |
+| 3.3 | Bob muss Zahlungen **ohne Alice** claimen können. |
+| 3.4 | Die End-Outputs müssen **ausschließlich von Bob** auszahlbar sein. |
+| 3.5 | Alle Transaktionen müssen den **Epic-Cash-Konsens** der lokalen Usernet-Chain erfüllen. |
+| 3.6 | **Vertraulichkeit und Privatsphäre** müssen gemäß dem EPIC-Projekt erhalten bleiben. |
+| 3.7 | Es darf **keine überflüssig öffentlich verknüpfbare Information** auf der Chain hinterlassen werden. |
+| 3.8 | **Alice kann prüfen, dass Bob die Shared Outputs übernommen hat.** Alice muss in der Lage sein, aus der Chain nachzuvollziehen, dass Bob eine Zahlung claimt hat und die Mittel nun in seinen End-Outputs stecken. |
+| 3.9 | **Alice kann die Shared Outputs jederzeit selbst beanspruchen, solange Bob sie nicht in seine eigenen Outputs übertragen hat.** Der Alice-Reclaim-Pfad ist ein konkurrierender Pfad zum Bob-Claim. Der erste bestätigte gültige Spend gewinnt (First-Confirmed-Spend-Wins). |
 
-`payment_id = SHA256(DOMAIN || "id\|" || commitment || A_compressed || B_compressed)`.
+## §4 Nicht verbindlich — freie Designentscheidungen
 
-Der gemeinsame Blind wird aus `ECDH(a, B)` bzw. `ECDH(b, A)` abgeleitet und
-mit A, B, Betrag und Domain-Separator domänengetrennt gehasht. Nur Bob kann
-ihn korrekt ableiten.
+Die folgende Punkte sind **bewusst nicht** von der
+Funktional-Spezifikation vorgeschrieben. Jede
+Designentscheidung zu diesen Punkten ist zulässig, solange
+sie §2, §3 und §5 erfüllt:
 
-## Validierung
+- Gemeinsame Outputs / Split-Outputs
+- Die konkrete Schlüsselableitung
+- Zusätzliche Kernel-Features
+- Konsenserweiterungen jenseits dessen, was §3.5 erfordert
 
-1. Bob empfängt das `PendingEnvelope` über einen modellierten Wallet-Nachrichtenkanal.
-2. Bob berechnet `ECDH(b, A)`, leitet den gemeinsamen Blind ab und prüft, ob das abgeleitete Commitment mit dem im Envelope übereinstimmt.
-3. Bei Übereinstimmung erhält Bob ein `ClaimCapability` mit dem gemeinsamen Blind.
-4. Bob registriert das Payment im `OneSidedLedger` und kann es jederzeit per AgSig-Autorisierung claimen.
-5. Alice kann alternativ `sender_spend` aufrufen, um den Output selbst auszugeben — dies gewinnt den Race, bis Bob geclaimt hat.
+**Nicht mehr frei:** Der `BobClaim`-Kernel ist **Teil
+des Zielprotokolls** (§3.3). Der Alice-Reclaim-Pfad
+nutzt die **bestehende Standard-Mechanik von Epic Cash**
+(gewöhnlicher `Plain`-Kernel) und muss nicht neu
+erfunden werden (§3.9).
 
-Damit gilt im Modell: `Claim XOR SenderSpend`, da ein Output nur einmal ausgegeben werden kann.
+## §5 Akzeptanzkriterium (wörtlich)
 
-## Noch für Epic zu entwerfen
+> "Die vollständige Demonstration des Transaktionsflusses:
+> Bob erstellt den Descriptor einmalig → Alice erstellt 3
+> unabhängige Zahlungen (Bob nicht beteiligt) → alle 3
+> werden in der lokalen Usernet-Chain bestätigt → Bob
+> detektiert alle 3 → Bob claimt jede durch seine eigene
+> Transaktion → alle 3 Claims werden bestätigt → End-Outputs
+> ausschließlich von Bob auszahlbar."
+>
+> Zusätzlich:
+> - Alice kann aus der Chain verifizieren, dass Bob die
+>   Zahlungen übernommen hat (§3.8).
+> - Alice kann die Shared Outputs jederzeit selbst
+>   beanspruchen, solange Bob sie nicht bereits
+>   übertragen hat (§3.9).
 
-Eine reale Umsetzung muss die Vertragsbindung in Output, Range Proof und
-Kernel integrieren und sie in jedem Node validieren. Offene Punkte sind
-insbesondere:
+## §6 Grundsatz
 
-- sichere Abbildung des `PendingEnvelope` auf Epics Output-/Range-Proof-Format;
-- Erhalt der Regeln unter Cut-through und Aggregation;
-- Konsensserialisierung, Aktivierung und Netzwerkmigration;
-- Mempool-Konflikte, Reorgs und atomare UTXO-Updates;
-- Wallet-Scan-Schlüsselverwaltung, Erkennung und Wiederherstellung;
-- unabhängige Kryptographie- und Konsens-Audits.
+> "Ein erfolgreicher isolierter Krypto- oder Konsens-Test
+> **ersetzt nicht** die vollständige Demonstration des
+> Transaktionsflusses."
 
-Ohne diese Arbeit gibt es keinerlei Aussage zur Epic-Cash-Konsenskompatibilität.
+Jede einzelne Komponente — Krypto, Konsens, Wallet-Scan,
+Claim — muss **innerhalb der vollständigen
+3-Zahlungs-Demonstration** nachweislich funktionieren.
+
+## Statusbegriff
+
+Alle Dokumente in diesem Repo, die sich auf die *vorherige*
+Forschung (one-sided shared-redeemable POC,
+`AliceReclaim`, `BobClaim`-Attributionsforschung) beziehen,
+sind **abgeschlossen und überholt durch diese Spezifikation**.
+Sie bleiben als historische Aufzeichnung erhalten; ihr Inhalt
+ist **keine** Anleitung für weitere Entwicklung.
