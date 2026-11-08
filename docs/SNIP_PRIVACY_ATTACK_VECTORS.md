@@ -215,14 +215,28 @@ can always verify that a Receipt was claimed and by which path.
 **Information exposed:** The fact that a Receipt was spent, and which
 path (BobClaim or AliceSpend) was used. The timing of the spend.
 
-**Severity:** Low. **Exploitability:** Trivial (public data).
+**Severity:** Low (information exposed is limited). **Exploitability:**
+Trivial (public data).
 
 **Existing protections:** The amount remains hidden. Only the path type
 and timing are revealed.
 
+**Conceptual significance:** While the severity is Low in terms of
+information exposed, this represents one of the most important
+conceptual differences between SNIP and ordinary Mimblewimble
+transactions. In standard Mimblewimble, cut-through removes the
+link between inputs and outputs, providing transaction graph
+privacy. The Receipt exemption permanently preserves the input-output
+link and the resolution evidence, creating a durable structural
+linkability that does not exist in ordinary transactions. This is a
+deliberate trade-off: evidence preservation is required for the
+two-branch enforcement, but it means Receipt payments leave a
+permanent, publicly verifiable footprint on the chain.
+
 **Mitigations:** This is by design — evidence preservation is a
 consensus requirement. No mitigation without changing the consensus
-rules.
+rules. Users should be aware that Receipt payments are more
+traceable than ordinary Epic transactions.
 
 **Verification status:** Demonstrated (by design, documented in design
 doc §6.8).
@@ -358,5 +372,9 @@ descriptor reuse). These are standard blockchain privacy concerns, not
 SNIP-specific vulnerabilities.
 
 Protocol-level privacy (amount hiding, identity separation) is
-maintained. Network-level and wallet-level privacy require additional
-measures outside the scope of this PoC.
+maintained. However, the Receipt cut-through exemption creates a
+permanent structural linkability that is a significant conceptual
+difference from ordinary Mimblewimble transactions, where cut-through
+removes input-output links. This is an inherent trade-off of the
+two-branch enforcement design. Network-level and wallet-level privacy
+require additional measures outside the scope of this PoC.
