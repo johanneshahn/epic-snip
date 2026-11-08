@@ -120,9 +120,23 @@ checking if the derived `B_i` values share a common structure.
 **Attacker capabilities:** Passive observer with knowledge of Bob's
 descriptor.
 
-**Information exposed:** If the descriptor is public, an observer can
-verify that a Receipt output's `hashes.bob` corresponds to a key
-derived from that descriptor. This reveals that the payment is to Bob.
+**Information exposed:** Knowing Bob's public descriptor does not, by
+itself, allow a passive observer to identify which Receipts are
+addressed to Bob. Under the CDH assumption, the observer cannot compute
+the per-payment shared secret `ECDH(r_i, S)` and therefore cannot
+verify that `hashes.bob` was derived from that descriptor. The
+descriptor being public reveals that Bob accepts payments, but not
+which on-chain Receipts belong to him.
+
+**Important distinction:**
+- Knowing who owns a public descriptor is a separate question from
+  knowing which blockchain Receipts belong to that descriptor. The
+  former is a descriptor-distribution concern; the latter requires
+  solving CDH.
+- External information (e.g., Alice revealing she paid Bob, or timing
+  correlation) could link a Receipt to Bob independently of the
+  cryptographic construction. Such links arise from usage patterns, not
+  from the protocol's cryptographic structure.
 
 **Severity:** Medium. **Exploitability:** Requires knowledge of Bob's
 descriptor (public by design).
