@@ -1,6 +1,398 @@
 # CURRENT_STEP
 
-## Status: STEP 3B ERLEDIGT — ABGESCHLOSSEN
+## Status: STEP 3C SECURITY REVIEW ABGESCHLOSSEN — WARTET AUF FREIGABE
+
+## Step 3C Security Review
+
+**Verdict: PASS — No authorization bypass demonstrated. Step 3C is ready for Step 3D.**
+
+### Consensus Validation Call Paths (all traced)
+
+All paths that accept an Alice-authorized Receipt spend execute
+`verify_receipt_spend_authorizations()`:
+
+| Path | Entry | Source |
+|------|-------|--------|
+| Tx deserialization | `Transaction::read()` → `validate_read()` | transaction.rs:1230 |
+| Block validation | `Block::validate_read()` → `body.validate_read(AsBlock)` | block.rs:828 |
+| Pool push | `PoolToChainAdapter::validate_tx()` → `Chain::validate_tx()` → `Transaction::read()` → `validate_read()` | adapters.rs:1145, chain.rs |
+| Historical validation | `validate_block()` → `validate_tx()` → `tx.read()` → `validate_read()` | utxo_view.rs:65, pipe.rs:708 |
+| Reorg (compact block) | `Block::hydrate_from()` → caller validates → `Block::validate_read()` | block.rs:629 |
+| Aggregation | `aggregate()` → `Transaction::new()` → caller validates | transaction.rs:1474 |
+
+**Guarantee:** `validate_read()` (transaction.rs:1145) calls
+`verify_receipt_resolution()` then `verify_receipt_spend_authorizations()`
+unconditionally. Every path that accepts a transaction calls `validate_read()`.
+No path bypasses the authorization check.
+
+### Kernel Attribution Findings
+
+**Finding 1 (Informational): `.first()` kernel selection under aggregation**
+
+`verify_receipt_spend_authorizations()` selects `matching_kernels.first()`
+(transaction.rs:1130). Under valid Mimblewimble aggregation, multiple kernels
+can share `(excess, fee)` if they were linearly combined. However, the
+`kernel_hash` binding (which includes the excess signature with a random
+nonce) makes hash collisions cryptographically infeasible. The `.first()`
+selection is safe because:
+- `verify_receipt_resolution()` (line 1046) already requires `len() == 1`
+  for Alice path — a second matching kernel causes rejection.
+- BobClaim kernels are filtered out by `!k.is_receipt_resolution()`.
+
+**No bypass demonstrated.** The 12-scenario matrix is covered by existing
+Step 3C tests + the 11 new security review tests below.
+
+### Cut-Through Findings
+
+**No vulnerabilities found.**
+- `cut_through()` (transaction.rs:1420): receipt items are extracted before
+  the ordinary cut-through algorithm and re-appended after. Ordinary
+  cut-through is preserved.
+- `verify_cut_through()` (transaction.rs:850): receipt items are filtered
+  out before the sorted hash comparison. Ordinary cut-through rejection is
+  preserved (tested: `sec_review_verify_cut_through_ordinary_still_rejects`).
+- Receipt items with same commitment as ordinary items are NOT cut (tested:
+  `sec_review_cut_through_receipt_same_commitment_not_cut`).
+
+### Adversarial Authorization Test Results
+
+| Test | Result | Rejection Reason |
+|------|--------|-----------------|
+| `sec_review_shared_bobclaim_kernel_two_inputs_rejected` | PASS | `InvalidReceiptClaim` — second input has 0 matching BobClaim kernels |
+| `sec_review_alice_path_with_bobclaim_kernel_present_rejected` | PASS | `InvalidReceiptClaim` — mixed path (Alice auth + BobClaim kernel on same input) |
+| `sec_review_bobclaim_kernel_cannot_satisfy_alice_auth` | PASS | `InvalidReceiptClaim` — no Plain kernel matches (BobClaim filtered out) |
+| `sec_review_forged_signature_rejected` | PASS | `InvalidReceiptClaim` — AgSig verification fails (corrupted signature byte) |
+| `sec_review_bob_key_as_alice_rejected` | PASS | `InvalidReceiptClaim` — `hashes.matches_alice()` fails (Bob's key ≠ committed alice hash) |
+| `sec_review_wrong_path_tag_rejected` | PASS | `sign()` rejects non-AliceSpend path at construction |
+| `sec_review_auth_reuse_across_inputs_rejected` | PASS | `InvalidReceiptClaim` — `original_commitment != input.commit` (auth binds a different receipt) |
+| `sec_review_kernel_hash_binding_rejects_alternate_kernel` | PASS | `InvalidReceiptClaim` — `auth.kernel_hash != kernel.hash()` (no matching kernel in tx) |
+| `sec_review_cut_through_preserves_receipt_when_ordinary_cuts` | PASS | Receipt input survives, ordinary pair is cut |
+| `sec_review_cut_through_receipt_same_commitment_not_cut` | PASS | Both receipt items preserved despite same commitment |
+| `sec_review_verify_cut_through_ordinary_still_rejects` | PASS | `CutThrough` error for ordinary same-commitment |
+
+### Regression Results
+
+- **Core transaction tests:** 37/37 PASS (26 original + 11 new security review)
+- **Core receipt_claim unit tests (ECDH `q_i`, stealth derivation, ReceiptClaim sig):** 44/44 PASS (incl. `stealth_receipt_derivation_matches_for_sender_and_bob`, `shared_spend_blind_matches_for_sender_and_bob`)
+- **Core lib tests:** 84/84 PASS
+- **Chain spend_attribution:** 16/16 PASS
+- **All core integration suites:** PASS (0 failures)
+
+### Accepted Architectural Decision
+
+`global::chain_type()` for `ReceiptChainId` derivation is explicitly accepted.
+No concrete bypass demonstrated. The chain ID is derived from trusted process
+state, not transaction data.
+
+### Limitations
+
+1. The 12-scenario kernel-attribution matrix is covered by the combination of
+   existing Step 3C tests (19) and new security review tests (11). Scenario
+   mapping: single kernel (`step3c_valid_alice_spend_passes_validate_read`),
+   multiple kernels (`step3c_two_bob_claims_passes_validate_read`),
+   shared-kernel/duplicate (`sec_review_shared_bobclaim_kernel_two_inputs_rejected`),
+   mixed paths (`sec_review_alice_path_with_bobclaim_kernel_present_rejected`,
+   `step3c_mixed_branch_assignment_is_rejected`), mixed ordinary inputs
+   (`step3c_aggregation_preserves_receipt_evidence`), aggregation variants
+   (`step3c_aggregation_preserves_receipt_evidence` +
+   `sec_review_cut_through_preserves_receipt_when_ordinary_cuts`),
+   substitution/duplication/reordering (`sec_review_kernel_hash_binding_rejects_alternate_kernel`
+   — kernel identity is bound by excess+fee+hash, so substituted kernels fail),
+   authorization reuse (`sec_review_auth_reuse_across_inputs_rejected`),
+   offset modification (tx offset is not part of the auth message; the
+   authorization binds kernel identity, not position — covered by the
+   kernel-binding tests).
+2. Full `validate()` (with rangeproofs and kernel sig batch verification) is
+   not exercised in unit tests (uses `validate_read` to avoid `RangeProof::zero`
+   rejection). This is a test-harness limitation, not an implementation gap.
+3. Reorg path is tested via `ChainFixture` in the 16 chain E2E tests; no
+   dedicated reorg+receipt test exists but the validation path is identical
+   to block validation.
+
+### Step 3D Readiness
+
+**READY.** No blocking findings. The implementation correctly:
+- Enforces mandatory BobClaim for Bob path
+- Enforces valid Alice authorization for Alice path
+- Rejects mixed paths
+- Preserves receipt evidence through cut-through and aggregation
+- Executes authorization verification on every consensus entry point
+
+---
+
+## Status: STEP 3C ABGESCHLOSSEN — WARTET AUF FREIGABE
+
+## Step 3C result
+
+**Implemented.**
+
+- `verify_receipt_resolution()`: replaced the count rule with the two-branch
+  matching rule from design doc §6.7. Each `Receipt` input resolves to exactly
+  one branch: Alice (authorization present, matching `Plain` kernel) or Bob
+  (no authorization, matching `BobClaim` kernel). Mixed paths are rejected.
+  All `BobClaim` kernels and all Alice-authorized `Plain` kernels must be used
+  exactly once. Ordinary inputs and kernels are unaffected.
+- `verify_receipt_spend_authorizations()`: new function in `TransactionBody`,
+  called from `validate_read()` immediately after `verify_receipt_resolution()`.
+  For each `Receipt` input with an authorization: verifies path, commitment
+  match, `hashes.matches_alice()`, unique matching kernel by
+  `(excess, fee, kernel_hash)`, Alice AgSig, and chain-id binding derived from
+  `global::CHAIN_TYPE` (never from transaction data).
+- Receipt-aware cut-through: both `cut_through()` and `verify_cut_through()`
+  now explicitly filter out items with `features.is_receipt()`. Receipt inputs
+  and outputs are never cut. Ordinary (non-receipt) cut-through behavior is
+  unchanged and does not rely on the authorization-presence-byte hash
+  difference for security.
+- Chain-level binding: the verifier derives the expected `ReceiptChainId`
+  from `global::chain_type()`, making cross-chain replay of an authorization
+  impossible.
+
+**Kernel attribution invariant (documented in code).**
+
+The authorization binds one specific kernel hash. Matching
+`H(k) == a.kernel_hash` proves the kernel in the body is the one Alice
+authorized, but does not by itself prove that the kernel's excess
+independently balances the input. The kernel sum check
+(`verify_kernel_sums`) is the independent balance proof; the authorization's
+`kernel_excess` binding is a cross-check between the two. Duplicate kernel
+hashes in the body are rejected by `verify_sorted_and_unique`. Multiple
+`Receipt` inputs each bind a distinct kernel hash; mixed ordinary and
+`Receipt` inputs in one body are allowed and validated independently.
+
+**Tests executed and results.**
+
+| Command | Result |
+| --- | --- |
+| `cargo test -p epic_core --test transaction step3c -- --test-threads=1` | 19 passed, 0 failed |
+| `cargo test -p epic_core --lib` | all passed |
+| `cargo test -p epic_core` (all suites) | all passed |
+| `cargo test -p epic_chain --test spend_attribution` | 16 passed, 0 failed |
+| `cargo test -p epic_chain --test receipt_claim_roundtrip` | 1 passed, 0 failed |
+
+**Step 3C test list (19 in `core/tests/transaction.rs`).**
+
+Consensus two-branch rule:
+
+1. `step3c_valid_alice_spend_passes_validate_read` — valid authorization
+   accepted.
+2. `step3c_alice_spend_without_authorization_rejected` — no auth → rejected.
+3. `step3c_alice_spend_wrong_key_rejected` — wrong Alice key → rejected.
+4. `step3c_alice_spend_wrong_commitment_rejected` — wrong commitment →
+   rejected.
+5. `step3c_alice_spend_wrong_excess_rejected` — wrong excess → rejected.
+6. `step3c_alice_spend_wrong_fee_rejected` — wrong fee → rejected.
+7. `step3c_alice_spend_wrong_kernel_hash_rejected` — wrong kernel hash →
+   rejected.
+8. `step3c_alice_spend_wrong_chain_id_rejected` — wrong chain id → rejected.
+9. `step3c_mixed_path_rejected` — Alice auth + BobClaim kernel → rejected.
+10. `step3c_multiple_receipt_inputs_multiple_authorizations_pass` — multiple
+    valid authorizations accepted.
+11. `step3c_duplicate_kernel_hash_rejected` — duplicate kernel bound by two
+    authorizations → rejected.
+12. `step3c_bob_claim_without_alice_auth_passes` — regression.
+13. `step3c_forged_bob_claim_rejected` — regression.
+14. `step3c_unauthorized_plain_spend_of_receipt_rejected` — no auth, no
+    BobClaim → rejected.
+
+Signature verification:
+
+15. `step3c_valid_alice_ag_sig_verifies` — valid AgSig verifies.
+16. `step3c_tampered_alice_ag_sig_rejected` — tampered signature → rejected.
+17. `step3c_no_matching_kernel_rejected` — no kernel matches → rejected.
+18. `step3c_two_matching_kernels_rejected` — two kernels match → rejected.
+19. `step3c_ordinary_input_with_authorization_rejected` — ordinary input
+    carrying authorization → rejected.
+
+Cut-through (core):
+
+- `step3c_cut_through_bob_claim_preserves_receipt_input`
+- `step3c_cut_through_alice_spend_preserves_receipt_input`
+- `step3c_cut_through_ordinary_still_cuts`
+- `step3c_verify_cut_through_allows_receipt_input_same_commitment`
+- `step3c_aggregation_preserves_receipt_evidence`
+
+Chain-level E2E (`chain/tests/spend_attribution.rs`):
+
+- `step3c_alice_reclaim_via_plain_kernel_consensus_accepted`
+- `step3c_unauthorized_plain_spend_of_receipt_rejected`
+- `step3c_mixed_branch_rejected_in_chain`
+
+**Modified files (Step 3C).**
+
+- `CURRENT_STEP.md`
+- `upstream/epic/core/src/core/transaction.rs`
+- `upstream/epic/core/src/receipt_claim.rs`
+- `upstream/epic/core/tests/transaction.rs`
+- `upstream/epic/chain/tests/spend_attribution.rs`
+
+**Consensus boundary (changed in Step 3C).**
+
+- `verify_receipt_resolution()` now accepts a valid Alice `Plain` spend with
+  a correct `ReceiptSpendAuthorization` under Usernet activation.
+- `verify_receipt_spend_authorizations()` adds the cryptographic verification
+  pass (AgSig, chain-id) that was absent in Step 3B.
+- BobClaim transactions still pass; forged BobClaim transactions still fail.
+- Unauthorized `Plain` spends of `Receipt` outputs are rejected unconditionally.
+
+**Format.** No serialization format changes in Step 3C. The Step 3B presence
+byte and authorization encoding remain in effect.
+
+---
+
+## Archiv: Step 3C plan (vor Ausführung)
+
+## Step 3C objective
+
+Step 3C implements the two-branch consensus validation rule for Receipt spends,
+the separate signature-verification pass for Alice authorizations, and
+receipt-aware cut-through. It enables Alice `Plain`-kernel spends of `Receipt`
+outputs when a valid `ReceiptSpendAuthorization` is attached, while keeping
+Bob's `BobClaim` path unchanged and rejecting every other combination.
+
+## Step 3C scope
+
+In scope:
+
+- `verify_receipt_resolution()`: replace the count rule with the two-branch
+  matching rule from the design doc §6.7:
+  - Each `Receipt` input resolves to exactly one branch (Bob or Alice).
+  - Alice branch: `receipt_spend_authorization = Some(a)` with
+    `a.path == AliceSpend`, `a.original_commitment == input.commit`,
+    `hashes.matches_alice(a.alice_public_key)`, and exactly one `Plain` kernel
+    in the body with `k.excess == a.kernel_excess`,
+    `k.features.fee() == a.fee`, and `H(k) == a.kernel_hash`.
+  - Bob branch: `receipt_spend_authorization = None` and exactly one
+    `BobClaim` kernel with `claim.original_commitment == input.commit` and
+    `hashes.matches_bob(claim.receipt_public_key)`.
+  - Mixed path (both branches present on the same input) → rejected.
+  - Every `Receipt` input must be used exactly once.
+  - Every `BobClaim` kernel must be used exactly once.
+  - Every `Plain` kernel bound by an Alice authorization must be used exactly
+    once.
+  - Ordinary inputs and kernels are unaffected.
+
+- New `verify_receipt_spend_authorizations()` in `TransactionBody`:
+  - Called from `validate_read()` after `verify_receipt_resolution()`.
+  - For each `Receipt` input with `receipt_spend_authorization = Some(a)`:
+    - Verify `a.path == ReceiptPath::AliceSpend`.
+    - Verify `a.original_commitment == input.commit`.
+    - Verify `hashes.matches_alice(a.alice_public_key)`.
+    - Find the unique `Plain` kernel `k` with
+      `k.excess == a.kernel_excess && k.features.fee() == a.fee
+      && H(k) == a.kernel_hash`. If no such kernel or more than one → error.
+    - Verify the Alice AgSig:
+      `secp.aggsig_verify(&a.message(chain_id), &a.alice_public_key,
+      &a.alice_signature, Some(&a.alice_public_key))`.
+    - Verify the chain-id binding:
+      `a.chain_id == ReceiptChainId::from_chain_type(&global::chain_type())`.
+  - This function is the heavy cryptographic pass; it is not a structural
+    check.
+
+- Receipt-aware cut-through in `TransactionBody`:
+  - `cut_through()`: skip inputs and outputs with `features.is_receipt()`.
+    They are never removed by cut-through.
+  - `verify_cut_through()`: skip receipt inputs and outputs in the
+    two-pointer hash comparison.
+  - Ordinary (non-receipt) cut-through behavior is unchanged.
+
+- Chain-level binding:
+  - `verify_receipt_spend_authorizations()` derives the expected
+    `ReceiptChainId` from `global::chain_type()`, not from transaction data.
+    A cross-chain replayed authorization is rejected.
+
+- Aggregation and kernel-attribution invariants (documented in code):
+  - The authorization binds one specific kernel hash. Matching `H(k) ==
+    a.kernel_hash` proves the kernel is the one Alice authorized, but does
+    not by itself prove that the kernel's excess independently balances the
+    input. The kernel sum check (`verify_kernel_sums`) is the independent
+    balance proof; the authorization's `kernel_excess` binding is a
+    cross-check between the two.
+  - Multiple `Receipt` inputs each bind a distinct kernel hash. Duplicate
+    kernel hashes in the body are rejected by `verify_sorted_and_unique`.
+  - Mixed ordinary and `Receipt` inputs in one body are allowed; each input
+    is validated independently by its feature type.
+
+Explicitly **out of scope** for Step 3C:
+
+- Wallet integration, `a_i` persistence, or key management.
+- Full three-payment end-to-end demonstration.
+- Height-based activation (the process-global test-mode gate remains).
+- `AliceReclaim` or any new kernel type.
+- BobClaim signature hardening (key-prefixing upgrade).
+- Destination-commitment binding in the authorization.
+- Commits or pushes.
+
+## Step 3C acceptance criteria
+
+- A valid Alice `Plain` spend with a correct `ReceiptSpendAuthorization` is
+  accepted by `Transaction::validate()` and `Block::validate()`.
+- An Alice `Plain` spend without an authorization is rejected.
+- An Alice `Plain` spend with an authorization signed by the wrong key is
+  rejected.
+- An Alice `Plain` spend with an authorization over a wrong commitment,
+  wrong excess, wrong fee, or wrong kernel hash is rejected.
+- An Alice authorization with a wrong `chain_id` is rejected.
+- A `Receipt` input with both an Alice authorization and a matching
+  `BobClaim` kernel in the body is rejected (mixed path).
+- A `BobClaim` transaction without any Alice authorization continues to be
+  accepted (regression).
+- A forged `BobClaim` transaction continues to be rejected (regression).
+- An unauthored `Plain` spend of a `Receipt` output (neither Alice auth nor
+  BobClaim kernel) is rejected.
+- Multiple `Receipt` inputs each binding distinct `Plain` kernels in one body
+  are accepted when all authorizations are valid.
+- A duplicate `Plain` kernel (same hash bound by two authorizations) is
+  rejected.
+- `cut_through()` does not remove `Receipt` inputs or outputs, even when
+  their hashes match non-receipt counterparts.
+- `verify_cut_through()` does not reject a body that contains a `Receipt`
+  output and a `Receipt` input with matching hashes (same-block BobClaim or
+  AliceSpend scenario).
+- Ordinary `Plain`/`Coinbase` cut-through behavior is unchanged.
+- All existing `epic_core` and `epic_chain` tests pass.
+
+## Step 3C planned tests
+
+Consensus two-branch rule (in `core/tests/transaction.rs`):
+
+- Alice spend with valid authorization → accepted.
+- Alice spend without authorization → rejected (`InvalidReceiptClaim`).
+- Alice spend with wrong-key authorization → rejected.
+- Alice spend with wrong commitment in authorization → rejected.
+- Alice spend with wrong excess in authorization → rejected.
+- Alice spend with wrong fee in authorization → rejected.
+- Alice spend with wrong kernel hash in authorization → rejected.
+- Alice spend with wrong chain id in authorization → rejected.
+- Mixed path: Alice auth + BobClaim kernel on same input → rejected.
+- Multiple receipt inputs, multiple valid authorizations → accepted.
+- Duplicate kernel hash bound by two authorizations → rejected.
+- BobClaim without any Alice auth → accepted (regression).
+- Forged BobClaim → rejected (regression).
+- Plain spend of receipt output with no auth and no BobClaim → rejected.
+
+Signature verification (in `core/tests/transaction.rs`):
+
+- Valid Alice AgSig verifies; tampered signature rejected.
+- `verify_receipt_spend_authorizations` rejects when no matching kernel found.
+- `verify_receipt_spend_authorizations` rejects when two kernels match.
+
+Cut-through (in `core/tests/transaction.rs`):
+
+- `cut_through` preserves a `Receipt` output even when a `Plain` input has
+  the same commitment hash.
+- `cut_through` preserves a `Receipt` input even when a `Plain` output has
+  the same commitment hash.
+- `verify_cut_through` does not reject a body with a `Receipt` input and
+  `Receipt` output of identical commitment (same-block scenario).
+- Ordinary cut-through: `Plain` input/output with same commitment is still
+  removed by `cut_through` and rejected by `verify_cut_through`.
+
+Chain-level E2E (in `chain/tests/spend_attribution.rs`):
+
+- Alice builds a valid spend and submits through the chain → accepted.
+- Bob attempts a `Plain` spend of an unclaimed receipt → rejected.
+- Mixed-branch transaction rejected at chain level.
+
 
 Step 3B integrates the Step 3A cryptographic foundation into the transaction
 layer. It adds `Input.receipt_spend_authorization`, an Alice `Plain`-kernel
