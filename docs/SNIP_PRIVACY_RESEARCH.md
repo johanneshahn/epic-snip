@@ -8,8 +8,15 @@ permanently recognizing which Receipt was spent, when, and via which
 path — using only the cryptographic primitives already present in
 Epic Cash.
 
-Each investigation is rated **Feasible**, **Infeasible**, or **Unproven**,
-with mathematical justification.
+Each conclusion is classified as one of:
+
+- **Demonstrated**: empirically verified by existing tests.
+- **Supported under explicit assumptions**: follows from stated
+  cryptographic or architectural assumptions, but not empirically
+  proven.
+- **Unproven**: plausible but lacks supporting evidence or
+  assumptions.
+- **Incorrect**: contradicted by evidence or reasoning.
 
 No code changes are made in this phase.
 
@@ -49,10 +56,13 @@ Therefore:
 - The observer **cannot** verify whether `hashes.bob` matches any
   Bob-derived key.
 
-**Conclusion: Infeasible.** An observer with only Bob's public descriptor
-cannot determine which Receipts are addressed to Bob. The descriptor being
-public does not break recipient privacy. This holds under the standard
-CDH assumption on secp256k1.
+**Classification: Supported under explicit assumptions.** An observer
+with only Bob's public descriptor cannot determine which Receipts are
+addressed to Bob, under the standard Computational Diffie-Hellman (CDH)
+assumption on secp256k1. The descriptor being public does not break
+recipient privacy. This is not **Demonstrated** (no formal proof of CDH
+hardness) and not **Infeasible** in an absolute sense — it is contingent
+on the CDH assumption holding.
 
 ### Sub-question: Can Alice derive Bob's exclusive key `b_i`?
 
@@ -65,8 +75,12 @@ Even though Alice knows `r_i`, she cannot derive `b_i = p + h_i`
 because she lacks `p` (Bob's private receipt spend secret) and cannot
 compute `h_i` (requires `s`).
 
-**Conclusion: Infeasible.** Alice cannot derive Bob's exclusive claim
-key `b_i`.
+**Classification: Supported under explicit assumptions.** Alice cannot
+derive Bob's exclusive claim key `b_i`. This follows from the CDH
+assumption (Alice cannot compute `ECDH(r_i, S)` without `s`) and the
+discrete logarithm assumption (Alice cannot recover `p` from `P = pG`).
+It is not **Demonstrated** (no formal proof) but is well-supported by
+standard cryptographic assumptions.
 
 ### Sub-question: Can Bob derive Alice's exclusive key `a_i`?
 
@@ -79,18 +93,40 @@ ECDH shared secret but is independent of `a_i`.
 Even though Bob can compute `q_i` (the shared blind), he cannot derive
 `a_i = KDF(Alice_seed || index)` because he lacks Alice's seed.
 
-**Conclusion: Infeasible.** Bob cannot derive Alice's exclusive reclaim
-key `a_i`.
+**Classification: Supported under explicit assumptions.** Bob cannot
+derive Alice's exclusive reclaim key `a_i`. This follows from the
+discrete logarithm assumption (Bob cannot recover `a_i` from
+`A_i = a_i * G`) and the fact that `a_i` is derived from Alice's seed
+via a separate hardened path that Bob has no access to. The shared blind
+`q_i` is independent of `a_i`. It is not **Demonstrated** but is
+well-supported by standard assumptions.
 
-### Important limitation
+### Important limitation and distinction between observer types
 
-Knowledge of the public descriptor alone does not prove that an
-observer can compute the secret ECDH tweak. The stealth metadata
-(ephemeral hint `R_i`) is public, but deriving the tweak requires Bob's
-private scan secret. Whether passive correlation to Bob is actually
-possible depends on the concrete key derivation and must be investigated
-separately. The attack is classified as Medium/Plausible but has not
-been demonstrated.
+**Passive observer (knows only Bob's public descriptor):**
+Under the CDH assumption, the observer cannot compute `h_i` or `B_i`
+and therefore cannot identify which Receipts are addressed to Bob. The
+public descriptor alone does not enable recipient identification. This
+is **Supported under explicit assumptions** (CDH).
+
+**Alice (knows `r_i`, the ephemeral secret she chose):**
+Alice knows `r_i` but still cannot compute `ECDH(r_i, S) = r_i * s * G`
+because she lacks `s`. She can compute `B_i` only if she knows `h_i`,
+which requires `s`. Therefore Alice also cannot derive `b_i` or identify
+Bob's Receipts beyond those she created herself. This is **Supported
+under explicit assumptions** (CDH + discrete log).
+
+**Bob (knows `s`, his scan secret):**
+Bob can compute `ECDH(s, R_i) = r_i * s * G`, derive `h_i` and `B_i`,
+and verify `hashes.bob == H(B_i)`. Bob can identify his Receipts. This
+is **Demonstrated** (implemented and tested in `scan_incoming`).
+
+**Key distinction:** The descriptor being public is not itself a privacy
+weakness. The security of recipient privacy rests on the CDH assumption,
+not on descriptor secrecy. However, this is a cryptographic assumption,
+not a proof. If CDH were broken, recipient privacy would be lost. The
+classification is therefore "Supported under explicit assumptions," not
+"Demonstrated" or "Infeasible."
 
 ---
 
@@ -142,11 +178,15 @@ been demonstrated.
 - The LIP-0004 approach addresses this with a defined confirmation
   horizon and checkpoint trust, but acknowledges the risk.
 
-**Conclusion: Feasible in principle, but introduces a trust assumption.**
-The authorization evidence could be pruned after a confirmation horizon,
-but this requires checkpoint trust for new nodes. The current
+**Classification: Supported under explicit assumptions.** Authorization
+evidence could be pruned after a confirmation horizon, but this requires
+checkpoint trust for new nodes (Horizon Attack risk). The current
 implementation preserves all evidence (cut-through exemption) to
-maintain full historical verifiability without trust assumptions.
+maintain full historical verifiability without trust assumptions. Whether
+pruning is safe depends on the checkpoint trust model, which is an
+architectural choice, not a cryptographic limitation. The current
+design's permanence is a consequence of the cut-through exemption
+decision, not a fundamental requirement of the protocol.
 
 ---
 
@@ -195,12 +235,31 @@ OR-composition. AgSig combines multiple signatures into one, but
 requires all signers to participate. An OR-signature would allow
 either signer to produce a valid signature independently.
 
-**Conclusion: Infeasible with current Epic Cash primitives.** Implementing
-an aggregatable authorization balance would require new cryptographic
-primitives (OR-signatures or similar) that are not present in Epic
-Cash. The current approach (per-input matching with non-transferable
-authorizations) is the minimal construction that satisfies the
-requirements using existing primitives.
+**Classification: Supported under explicit assumptions.** The current
+design specifically requires distinguishing which of two authorization
+paths (BobClaim or AliceSpend) was taken for each Receipt input. This
+is a disjunction (OR) verification. Epic Cash's AgSig supports
+multi-signature aggregation (AND-composition) but not OR-composition.
+An OR-signature or zero-knowledge proof would be needed to make the
+authorization aggregatable without per-input matching.
+
+However, this is an **implementation limitation** (no OR-signature
+primitive available), not a fundamental cryptographic impossibility.
+If Epic Cash were extended with OR-signatures or a ZK proof system,
+an aggregatable construction might become feasible. The current
+approach (per-input matching with non-transferable authorizations) is
+the minimal construction satisfying the requirements using the
+primitives actually available.
+
+**Counterexample consideration:** Could a different construction avoid
+the OR by using the shared blind `q_i`? Both parties know `q_i`, so
+a spend authorized by `q_i` would not distinguish Alice from Bob.
+The two-branch rule exists precisely because `q_i` is shared — without
+independent authorization keys, either party could spend. Therefore,
+some form of independent authorization (and hence a disjunction
+check) is fundamentally required. The disjunction is necessary; only
+the specific mechanism (per-input matching vs. OR-signature) is an
+implementation choice.
 
 ---
 
@@ -212,7 +271,7 @@ requirements using existing primitives.
 | Independent BobClaim | Bob can claim without Alice | ✅ Demonstrated (phase_c) |
 | Independent AliceSpend | Alice can reclaim an unclaimed Receipt | ✅ Demonstrated (phase_c) |
 | Double-spend protection | Both paths cannot succeed | ✅ Demonstrated (phase_d, phase_e) |
-| Recipient privacy | Observer cannot group payments by public descriptor | **Unproven** (see Q1) |
+| Recipient privacy | Observer cannot group payments by public descriptor | **Supported under explicit assumptions** (see Q1) |
 | Transaction unlinkability | Aggregation hides original payment relationships | Not Yet Tested |
 | Cut-through safety | Pruning does not create invalid/unauthorized spends | Plausible (by design) |
 | Historical validation | New nodes can safely verify chain state | ✅ (evidence preserved) |
@@ -239,15 +298,29 @@ Two works are relevant:
    The specification also describes a possible Horizon Attack with deep
    reorganizations.
 
+## Classification Summary
+
+| Finding | Classification | Basis |
+|---|---|---|
+| Observer cannot identify Bob's Receipts from descriptor | Supported under explicit assumptions | CDH assumption on secp256k1 |
+| Alice cannot derive `b_i` | Supported under explicit assumptions | CDH + discrete log assumptions |
+| Bob cannot derive `a_i` | Supported under explicit assumptions | Discrete log + seed separation |
+| Authorization evidence prunable after horizon | Supported under explicit assumptions | Checkpoint trust model (architectural) |
+| Aggregatable authorization with current primitives | Supported under explicit assumptions | No OR-signature primitive available |
+| Cut-through exemption creates permanent linkability | Demonstrated | By design (code inspection) |
+| Amount hiding | Demonstrated | Pedersen commitments + Bulletproofs |
+| Identity separation | Demonstrated | Independent key derivation |
+| Recipient privacy (observer grouping) | Supported under explicit assumptions | CDH assumption |
+
 ## Conclusion
 
 The three research questions yield the following assessments:
 
-| Question | Assessment | Key reason |
+| Question | Classification | Key reason |
 |---|---|---|
-| 1. Can observer with descriptor identify Bob's Receipts? | **Infeasible** | Requires solving CDH; descriptor being public does not break recipient privacy |
-| 2. Can authorization evidence be pruned after a horizon? | **Feasible in principle** | Requires checkpoint trust for new nodes (Horizon Attack risk) |
-| 3. Can aggregatable authorization replace permanent linking? | **Infeasible** (with current primitives) | Requires OR-signatures not present in Epic Cash |
+| 1. Can observer with descriptor identify Bob's Receipts? | **Supported under explicit assumptions** | Requires solving CDH; descriptor being public does not break recipient privacy |
+| 2. Can authorization evidence be pruned after a horizon? | **Supported under explicit assumptions** | Requires checkpoint trust for new nodes (Horizon Attack risk) |
+| 3. Can aggregatable authorization replace permanent linking? | **Supported under explicit assumptions** | Requires OR-signatures not present in Epic Cash; disjunction is necessary, mechanism is implementation choice |
 
 **Most important finding:** The privacy limitation that is truly
 unavoidable is the permanent structural linkability created by the
@@ -255,10 +328,19 @@ cut-through exemption. This is not a weakness of the key derivation
 but a consequence of the two-branch enforcement requirement. Whether
 this linkability can be reduced depends on whether new cryptographic
 primitives (OR-signatures, delayed pruning with checkpoint trust)
-can be integrated — both of which are beyond the current Epic Cash
-primitive set.
+can be integrated.
+
+**Key distinction:** The disjunction (OR) between BobClaim and
+AliceSpend is fundamentally required — without independent
+authorization keys, either party could spend. The specific mechanism
+(per-input matching vs. OR-signature) is an implementation choice
+constrained by available primitives. The permanent linkability is a
+consequence of the current implementation's choice to preserve
+evidence for historical validation, not a fundamental requirement of
+the two-branch model.
 
 The research confirms that SNIP's privacy properties are sound at
 the protocol level (amount hiding, identity separation) but that the
 cut-through exemption creates a durable, publicly verifiable footprint
-that is a fundamental trade-off of the design.
+that is a trade-off of the current design, not necessarily a
+fundamental limitation.
