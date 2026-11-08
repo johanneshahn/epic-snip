@@ -187,6 +187,8 @@ The objective was technical feasibility, not production deployment.
 - [CURRENT_STEP.md](CURRENT_STEP.md) — implementation history (Steps 3A–3H)
 - [docs/SNIP_SPEND_AUTHORIZATION_DESIGN.md](docs/SNIP_SPEND_AUTHORIZATION_DESIGN.md) — design and threat model
 - [docs/SNIP_SPEND_ATTRIBUTION_RESEARCH.md](docs/SNIP_SPEND_ATTRIBUTION_RESEARCH.md) — attribution research
+- [docs/EPIC_PROTOCOL_CHANGES.md](docs/EPIC_PROTOCOL_CHANGES.md) — protocol changes assessment
+- [docs/SNIP_PRIVACY_ATTACK_VECTORS.md](docs/SNIP_PRIVACY_ATTACK_VECTORS.md) — privacy and linkability assessment
 
 ---
 
