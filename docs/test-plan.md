@@ -1,69 +1,66 @@
-# Testplan — überholt durch PROTOCOL.md
+# Test Plan — superseded by PROTOCOL.md
 
-**Status: HISTORISCH und überholt durch
+**Status: HISTORICAL and superseded by
 [PROTOCOL.md](../PROTOCOL.md).**
 
-Dieser Testplan beschrieb die POC-Tests in `tests/` und
-deckt **nicht** die heute geforderte 3-Zahlungs-
-Demonstration ab.
+This test plan described the POC tests in `tests/` and
+does **not** cover the 3-payment demonstration
+required today.
 
-## Neue oberste-Priorität-Tests (aus PROTOCOL.md §5)
+## New Top-Priority Tests (from PROTOCOL.md §5)
 
-Der zu schreibende Akzeptanz-Integrationstest
-(`upstream/epic/chain/tests/snip_acceptance.rs`) muss
-**einen einzigen** Flow demonstrieren:
+The acceptance integration test to be written
+(`upstream/epic/chain/tests/snip_acceptance.rs`) must
+demonstrate **a single** flow:
 
-1. Bob erzeugt einen Payment Descriptor (einmalig).
-2. Alice erzeugt 3 unabhängige Zahlungen aus dem
-   Descriptor — ohne Bob, ohne Kommunikation.
-3. Alle 3 Zahlungen werden in der lokalen Usernet-Chain
-   bestätigt.
-4. Bob scannt die Chain (ohne Kommunikation mit Alice),
-   detektiert alle 3 Zahlungen und bestimmt die Beträge.
-5. Bob claimt jede der 3 Zahlungen in einer eigenen
-   Transaktion.
-6. Alle 3 Claims werden in der Usernet-Chain bestätigt.
-7. Die End-Outputs sind ausschließlich von Bob auszahlbar
-   (Test: jeder andere Versuch, sie auszugeben, wird
-   abgewiesen).
+1. Bob generates a Payment Descriptor (once).
+2. Alice creates 3 independent payments from the
+   descriptor — without Bob, without communication.
+3. All 3 payments are confirmed in the local Usernet chain.
+4. Bob scans the chain (without communication with Alice),
+   detects all 3 payments, and determines the amounts.
+5. Bob claims each of the 3 payments in a separate
+   transaction.
+6. All 3 claims are confirmed in the Usernet chain.
+7. The final outputs are exclusively spendable by Bob
+   (test: any other attempt to spend them is rejected).
 
 ```sh
 cargo test -p epic_chain --test snip_acceptance
 ```
 
-## Bestehende, abgeschlossene Tests (historisch)
+## Existing, Completed Tests (historical)
 
-| Test | Abdeckung | Status |
+| Test | Coverage | Status |
 | --- | --- | --- |
-| `tests/one_sided_pending.rs` | In-Memory POC: Scan, Claim, SenderSpend, AgSig-Bindung | ✅ abgeschlossen |
-| `upstream/epic/chain/tests/receipt_claim_roundtrip.rs` | 1 Zahlung: Funding → Claim → Bestätigung in Usernet-Chain | ✅ abgeschlossen |
-| `upstream/epic/chain/tests/spend_attribution.rs` | BobClaim-Unfälschbarkeit, Attributierung, keine Alice-Spend-Pfad | ✅ abgeschlossen |
-| `cargo test -p epic_core --lib` | Kern-Krypto, Serialisierung, Transaktionsvalidierung | ✅ abgeschlossen |
+| `tests/one_sided_pending.rs` | In-memory POC: scan, claim, sender-spend, AgSig binding | ✅ completed |
+| `upstream/epic/chain/tests/receipt_claim_roundtrip.rs` | 1 payment: funding → claim → confirmation in Usernet chain | ✅ completed |
+| `upstream/epic/chain/tests/spend_attribution.rs` | BobClaim unforgability, attribution, no Alice-spend path | ✅ completed |
+| `cargo test -p epic_core --lib` | Core crypto, serialization, transaction validation | ✅ completed |
 
-Diese Tests sind **historisch** und werden nicht mehr
-modifiziert. Sie dienen der Recherche und als Fundament
-für den neuen 3-Zahlungs-Flow.
+These tests are **historical** and are no longer
+modified. They serve research and as the foundation
+for the new 3-payment flow.
 
-## Was der POC-Testplan abdeckte (historisch)
+## What the POC Test Plan Covered (historical)
 
-Die Integrationstests prüften:
+The integration tests verified:
 
-- Bob erkennt und claimt ein `OneSidedPayment` über seinen
-  Scan-Schlüssel.
-- Ein anderer Receiver-Schlüssel erkennt das Envelope
-  nicht.
-- Alice kann den Output konkurrierend ausgeben, bevor Bob
-  claimt; ein späterer Bob-Claim wird dann abgewiesen
+- Bob recognizes and claims a `OneSidedPayment` via his
+  scan key.
+- A different receiver key does not recognize the envelope.
+- Alice can spend the output competitively before Bob
+  claims; a later Bob claim is then rejected
   (`AlreadySpent`).
-- Die AgSig-Autorisierung ist an `payment_id` und
-  Commitment gebunden.
-- Pedersen Commitments haben die erwartete additive
-  Eigenschaft.
+- The AgSig authorization is bound to `payment_id` and
+  commitment.
+- Pedersen commitments have the expected additive
+  property.
 
-Erwartet wurde bei jeder ungültigen Autorisierung ein
-Fehler ohne Zustandswechsel und bei konkurrierenden
-gültigen Versuchen genau ein erfolgreicher Übergang.
-Nicht abgedeckt waren reale Netzwerke, Konsens, Reorgs,
-Side Channels, Zufallsgüte, Persistenz, Last, DoS, formale
-Verifikation und echte Mimblewimble-Kryptografie.
-Erfolgreiche Tests waren kein Sicherheitsnachweis.
+For every invalid authorization an error without state
+change was expected, and for competing valid attempts
+exactly one successful transition. Not covered were real
+networks, consensus, reorgs, side channels, randomness
+quality, persistence, load, DoS, formal verification,
+and real Mimblewimble cryptography. Successful tests
+were not a security proof.

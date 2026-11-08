@@ -1,67 +1,63 @@
-# Implementierungsplan — überholt durch PROTOCOL.md
+# Implementation Plan — superseded by PROTOCOL.md
 
-**Status: HISTORISCH.** Dieser Plan beschreibt die
-In-Memory-POC-Phase des Projekts. Er ist **abgeschlossen und
-überholt durch die Funktionalspezifikation in
+**Status: HISTORICAL.** This plan described the
+in-memory POC phase of the project. It is **completed and
+superseded by the functional specification in
 [PROTOCOL.md](PROTOCOL.md)**.
 
-Die oberste Priorität dieses Projekts ist heute die
-vollständige Demonstration des 3-Zahlungs-Flows
-(Descriptor → 3 unabhängige Zahlungen → 3 Confirmations →
-Bob scannt → Bob claimt → End-Outputs nur von Bob
-auszahlbar), nicht die hier dokumentierte In-Memory-Ledger-
-Simulation.
+The top priority of this project today is the
+complete demonstration of the 3-payment flow
+(descriptor → 3 independent payments → 3 confirmations →
+Bob scans → Bob claims → final outputs spendable only by
+Bob), not the in-memory ledger simulation documented here.
 
 ---
 
-# Historischer Plan: In-Memory-POC
+# Historical Plan: In-Memory POC
 
-## Ziel
+## Goal
 
-Erstelle im bestehenden Projektordner einen nachvollziehbaren
-kryptografischen Forschungsprototypen für ein hypothetisches
-Epic-Cash-SNIP-Protokoll:
+Create a reproducible cryptographic research prototype in the
+existing project folder for a hypothetical Epic Cash SNIP
+protocol:
 
-- Alice erzeugt eine Zahlung ohne Bobs Online-Beteiligung.
-- Bob kann die Zahlung jederzeit claimen.
-- Alice kann erst ab einer definierten Blockhöhe einen
-  Refund ausführen.
-- Genau einer der beiden Pfade kann erfolgreich sein.
+- Alice creates a payment without Bob being online.
+- Bob can claim the payment at any time.
+- Alice can execute a refund only from a defined block height.
+- Exactly one of the two paths can succeed.
 
-Wichtig: Dies ist ausschließlich eine lokale Modellierung und
-Testumgebung. Sie ist keine Epic-Cash-Wallet, keine
-Blockchain-Implementierung, nicht konsenskompatibel und darf
-keine echten Schlüssel, Gelder oder Netzwerke verwenden.
+Important: this is exclusively a local modeling and test
+environment. It is not an Epic Cash wallet, not a blockchain
+implementation, not consensus-compatible, and must not use
+real keys, funds, or networks.
 
-## Technische Entscheidungen
+## Technical Decisions
 
-- Sprache: Rust
+- Language: Rust
 - Build/Test: Cargo
-- Modell: deterministische In-Memory-Ledger-Simulation
-- Kryptografie: Schlüssel- und Signatur-Wrapper aus einer
-  etablierten Rust-Bibliothek; keine selbst entwickelte
-  Kryptografie
-- Zeit: ausschließlich simulierte Blockhöhen, keine
-  Systemzeit
-- Persistenz: keine; Testdaten nur im Arbeitsspeicher
-- Netzwerk: keines
+- Model: deterministic in-memory ledger simulation
+- Cryptography: key and signature wrappers from an established
+  Rust library; no self-developed cryptography
+- Time: exclusively simulated block heights, no system time
+- Persistence: none; test data only in memory
+- Network: none
 
-## Verzeichnis
+## Directory
 
-| Pfad | Inhalt |
+| Path | Content |
 | --- | --- |
-| `src/one_sided.rs` | Kerner der POC-Modellierung |
-| `tests/` | POC-Integrationstests |
-| `upstream/epic` | Lokaler Fork für die Chain-Phase (abgeschlossen) |
-| `docs/` | Forschungsdokumentation |
+| `src/one_sided.rs` | Core of the POC modeling |
+| `tests/` | POC integration tests |
+| `upstream/epic` | Local fork for the chain phase (completed) |
+| `docs/` | Research documentation |
 
-## Phasen (alle abgeschlossen)
+## Phases (all completed)
 
-1. Modell-Design und Zustandsautomat.
-2. Krypto-Bausteine (ECDH, Pedersen, AgSig).
-3. `OneSidedLedger` mit Claim/Refund-Entscheidung.
-4. POC-Integrationstests.
-5. Übergabe an die Chain-Phase (`upstream/epic`).
-6. AliceReclaim-Entfernung und Spend-Attribution-Forschung.
-7. **[Neu, ACTIVE]** Vollständige 3-Zahlungs-Demonstration
-   gemäß [PROTOCOL.md](PROTOCOL.md).
+1. Model design and state machine.
+2. Crypto building blocks (ECDH, Pedersen, AgSig).
+3. `OneSidedLedger` with claim/refund decision.
+4. POC integration tests.
+5. Handover to the chain phase (`upstream/epic`).
+6. AliceReclaim removal and spend-attribution research.
+7. **[New, ACTIVE]** Complete 3-payment demonstration
+   per [PROTOCOL.md](PROTOCOL.md).

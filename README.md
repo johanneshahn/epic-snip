@@ -190,61 +190,61 @@ The objective was technical feasibility, not production deployment.
 
 ---
 
-# Epic SNIP — Einseitige Wiederverwendbare Zahlungen
+# Epic SNIP — One-Sided Reusable Payments
 
-> **Experimenteller Forschungsstand — nicht für reale Gelder.** Der lokale
-> `upstream/epic`-Fork enthält einen Usernet-only Konsensentwurf und ist weder
-> mit Epic Mainnet/Floonet kompatibel noch kryptografisch auditiert. Er darf
-> nicht an EpicCash-Upstreams gepusht und nicht als produktionsreif verstanden
-> werden.
+> **Experimental research state — not for real funds.** The local
+> `upstream/epic` fork contains a Usernet-only consensus draft and is neither
+> compatible with Epic Mainnet/Floonet nor cryptographically audited. It must
+> not be pushed to EpicCash upstreams and must not be understood as
+> production-ready.
 
-## Oberste Priorität
+## Top Priority
 
-Dieses Projekt verfolgt **eine** Sache: die vollständige Demonstration des
-in [PROTOCOL.md](PROTOCOL.md) definierten Transaktionsflusses.
+This project pursues **one** thing: the complete demonstration of the
+transaction flow defined in [PROTOCOL.md](PROTOCOL.md).
 
-Bob veröffentlicht einen **Payment Descriptor** einmalig.
-Alice erstellt daraus **drei unabhängige Zahlungen**
-(ohne Bob, ohne Kommunikation) und bringt sie in der
-lokalen **Usernet-Chain** zur Bestätigung.
-Bob **detektiert** alle drei **durch Scannen der Chain**,
-bestimmt **dass** und **den Betrag**, und **claimt** jede
-in einer **eigenen Transaktion** auf einen
-**ausschließlich von ihm auszahlbaren** Output.
-Alle drei Claims werden in der Usernet-Chain bestätigt.
+Bob publishes a **Payment Descriptor** once.
+Alice creates **three independent payments** from it
+(without Bob, without communication) and brings them to
+confirmation in the local **Usernet chain**.
+Bob **detects** all three **by scanning the chain**,
+determines **that** and **the amount**, and **claims** each
+in a **separate transaction** to an output
+**exclusively spendable by him**.
+All three claims are confirmed in the Usernet chain.
 
-**Zusätzliche Anforderungen (PROTOCOL.md §3.8, §3.9):**
-- **Alice kann aus der Chain verifizieren**, dass Bob die
-  Zahlungen übernommen hat.
-- **Alice kann die Shared Outputs jederzeit selbst
-  beanspruchen**, solange Bob sie nicht bereits in seine
-  eigenen Outputs übertragen hat. Der erste bestätigte
-  gültige Spend gewinnt (First-Confirmed-Spend-Wins).
+**Additional requirements (PROTOCOL.md §3.8, §3.9):**
+- **Alice can verify from the chain** that Bob has
+  taken over the payments.
+- **Alice can claim the shared outputs herself at any time**,
+  as long as Bob has not already transferred them into his
+  own outputs. The first confirmed valid spend wins
+  (First-Confirmed-Spend-Wins).
 
-Jede andere Arbeit in diesem Repo — die In-Memory-POC unter
-`src/one_sided.rs`, der Receipt-Claim-Forschungspfad unter
-`upstream/epic`, die Attributionsforschung — ist
-**abgeschlossen und überholt durch diese Spezifikation**.
-Sie bleibt als historische Aufzeichnung erhalten.
+All other work in this repo — the in-memory POC under
+`src/one_sided.rs`, the receipt-claim research path under
+`upstream/epic`, the attribution research — is
+**completed and superseded by this specification**.
+It remains as a historical record.
 
-## Ausführen
+## Running
 
 ```sh
 cargo fmt --check
 cargo test
 ```
 
-### Ziel-Test (in Arbeit)
+### Target test (in progress)
 
-Der zu schreibende Akzeptanz-Integrationstest muss den
-vollständigen 3-Zahlungs-Flow demonstrieren:
+The acceptance integration test to be written must demonstrate the
+complete 3-payment flow:
 
 ```sh
-# (noch nicht vorhanden — folgt aus PROTOCOL.md §5)
+# (not yet available — follows from PROTOCOL.md §5)
 cargo test -p epic_chain --test snip_acceptance
 ```
 
-### Bestehende, abgeschlossene Tests (historisch)
+### Existing, completed tests (historical)
 
 ```sh
 cd upstream/epic
@@ -254,25 +254,24 @@ cargo test -p epic_chain --test spend_attribution
 cargo run -p epic_core --example receipt_stealth_demo
 ```
 
-Diese Tests dienen der Recherche und der Überprüfung einzelner
-Bausteine. Gemäß PROTOCOL.md §6 **ersetzen sie nicht** die
-vollständige 3-Zahlungs-Demonstration.
+These tests serve research and verification of individual
+building blocks. Per PROTOCOL.md §6 they **do not replace**
+the complete 3-payment demonstration.
 
-## Sicherheitsgrenzen
+## Security Boundaries
 
-Keine Mainnet-Kompatibilität. Keine echten Gelder. Keine
-Netzwerke. Alle Schlüssel sind ephemere Testmaterialien.
-Die lokale Range-Proof-, Kernel-Signatur- und
-TxHashset-Validierung belegen ausschließlich den
-beschriebenen Usernet-Forschungsumfang.
+No Mainnet compatibility. No real funds. No
+networks. All keys are ephemeral test material.
+The local range-proof, kernel-signature, and
+TxHashset validation cover only the described
+Usernet research scope.
 
-## Dokumentation
+## Documentation
 
-- **Oberste Priorität und Funktionalspezifikation:** [PROTOCOL.md](PROTOCOL.md)
-- **Fortlaufender Status:** [CURRENT_STEP.md](CURRENT_STEP.md)
-- Historisch: [One-sided-POC](docs/one-sided-poc.md), [Receipt-Claim-Entwurf](docs/receipt-claim-design.md), [Kryptografische Grundlage](docs/cryptographic-foundation.md), [Protokollspezifikation (POC)](docs/protocol-spec.md), [Bedrohungsmodell](docs/threat-model.md), [Annahmen](docs/assumptions-and-open-questions.md), [Testplan (POC)](docs/test-plan.md), [Übergabe zur Weiterarbeit](docs/continuation-guide.md), [Usernet-Experiment](docs/usernet-experiment.md), [Spend-Attribution-Forschung](docs/SNIP_SPEND_ATTRIBUTION_RESEARCH.md)
+- **Top priority and functional specification:** [PROTOCOL.md](PROTOCOL.md)
+- **Ongoing status:** [CURRENT_STEP.md](CURRENT_STEP.md)
+- Historical: [One-sided-POC](docs/one-sided-poc.md), [Receipt-Claim draft](docs/receipt-claim-design.md), [Cryptographic foundation](docs/cryptographic-foundation.md), [Protocol specification (POC)](docs/protocol-spec.md), [Threat model](docs/threat-model.md), [Assumptions](docs/assumptions-and-open-questions.md), [Test plan (POC)](docs/test-plan.md), [Continuation guide](docs/continuation-guide.md), [Usernet experiment](docs/usernet-experiment.md), [Spend-attribution research](docs/SNIP_SPEND_ATTRIBUTION_RESEARCH.md)
 
-Alle Dokumentations-Links auf die historischen Pfade
-gilt: sie beschreiben den **abgeschlossenen**
-Forschungsstand, **nicht** den in PROTOCOL.md
-definierten Zielzustand.
+All documentation links to the historical paths
+describe the **completed** research state, **not** the
+target state defined in PROTOCOL.md.

@@ -1,99 +1,85 @@
-# Annahmen und offene Fragen — überholt durch PROTOCOL.md
+# Assumptions and Open Questions — superseded by PROTOCOL.md
 
-**Status: HISTORISCH und überholt durch
+**Status: HISTORICAL and superseded by
 [PROTOCOL.md](../PROTOCOL.md).**
 
-Dieses Dokument beschrieb die Annahmen und offenen
-Fragen des In-Memory-POC. Es ist **nicht** die
-aktuelle Liste für die SNIP-Implementierung.
+This document described the assumptions and open questions of the
+in-memory POC. It is **not** the current list for the SNIP
+implementation.
 
 ---
 
-## Historische Annahmen
+## Historical Assumptions
 
-- secp256k1, Pedersen Commitments, AgSig und SHA-256
-  wurden nur als etablierte Bibliotheksprimitive
-  verwendet; die Protokollkonstruktion selbst war
-  nicht bewiesen.
-- Der Betrag war im Modell sichtbar; das Pedersen
-  Commitment bot im isolierten POC keine
-  Betragsvertraulichkeit.
-- Eine `payment_id` band Commitment,
-  Ephemeralschlüssel und Receiver-Schlüssel,
-  ersetzte aber keine Konsensserialisierung oder
-  Output-Bindung.
-- Die ECDH-Blind-Ableitung war eine heuristische
-  Konstruktion; eine formale Sicherheitsanalyse
-  stand aus.
-- Es fehlten Schlüsselableitung,
-  Descriptor-Wiederverwendungsschutz, Backup,
-  Recovery, Reorg- und Mempool-Regeln.
-- Die Zuverlässigkeit des externen
-  `PendingEnvelope`-Kanals wurde nicht modelliert:
-  verlorene oder manipulierte Envelopes wurden
-  nicht erkannt.
+- secp256k1, Pedersen commitments, AgSig and SHA-256
+  were only used as established library primitives;
+  the protocol construction itself was not proven.
+- The amount was visible in the model; the Pedersen
+  commitment provided no amount confidentiality in the
+  isolated POC.
+- A `payment_id` bound commitment,
+  ephemeral key, and receiver key, but replaced neither
+  consensus serialization nor output binding.
+- The ECDH blind derivation was a heuristic
+  construction; a formal security analysis was pending.
+- Key derivation, descriptor reuse protection, backup,
+  recovery, reorg, and mempool rules were missing.
+- The reliability of the external
+  `PendingEnvelope` channel was not modeled:
+  lost or tampered envelopes were not detected.
 
-Vor einer produktiven Nutzung wären formale
-Spezifikation und Beweise, ein konsensfähiges
-Design, Integration echter Confidential
-Transactions sowie unabhängige Kryptografie- und
-Sicherheits-Audits erforderlich. Dieses Projekt
-behauptet keine Epic-Cash-Konsenskompatibilität und
-keine reale Protokollsicherheit.
+Before production use, formal specification and proofs,
+a consensus-capable design, integration of real confidential
+transactions, and independent cryptography and
+security audits would be required. This project
+claims neither Epic Cash consensus compatibility nor
+real protocol security.
 
-## Offene Fragen für das neue SNIP-Protokoll
+## Open Questions for the New SNIP Protocol
 
-Die in PROTOCOL.md definierte Ziel-Implementierung
-bringt folgende offene Fragen mit:
+The target implementation defined in PROTOCOL.md
+brings the following open questions:
 
-1. **Payment-Descriptor-Format.** Welche Daten
-   muss der Descriptor enthalten, damit Alice
-   beliebig viele Zahlungen davon ableiten kann,
-   ohne Bob einzubeziehen?
-   (Vorschlag: Bobs langfristiger Scan-Public-Key
-   + Receipt-Spend-Public-Key + Versions- und
-   Domain-Separator.)
-2. **Stealth-Steuerbarkeit.** Alice wählt pro
-   Zahlung einen frischen Ephemeralschlüssel. Wie
-   wird die korrespondierende Stealth-Ableitung
-   kanonisch definiert, damit Bob sie
-   deterministisch und ohne Kommunikation
-   nachvollziehen kann?
-3. **Scan-Effizienz.** Wie scannt Bobs Wallet
-   die Chain effizient, ohne jeden
-   `Output` gegen jedes mögliche
-   `descriptor_id` zu prüfen? (Vorschlag:
-   Index über `H(descriptor_id)` in
+1. **Payment descriptor format.** What data must the
+   descriptor contain so that Alice can derive
+   arbitrarily many payments from it without involving
+   Bob? (Proposal: Bob's long-term scan public key
+   + receipt-spend public key + version and
+   domain separator.)
+2. **Stealth controllability.** Alice chooses a fresh
+   ephemeral key per payment. How is the corresponding
+   stealth derivation canonically defined so that Bob
+   can deterministically reproduce it without
+   communication?
+3. **Scan efficiency.** How does Bob's wallet
+   scan the chain efficiently without checking every
+   `Output` against every possible
+   `descriptor_id`? (Proposal: index over
+   `H(descriptor_id)` in
    `SharedReceiptKeyHashes`.)
-4. **Multi-Zahlungs-Korrelierbarkeit.** Wie wird
-   verhindert, dass drei Zahlungen aus dem
-   selben Descriptor öffentlich
-   verknüpfbar sind (PROTOCOL.md §3.7)?
-5. **Betrag-Leakage beim Scan.** Findet der
-   Scan zusätzlich zum Output selbst
-   Betragsinformation, die über den
-   Range-Proof hinausgeht?
-6. **Descriptor-Rotation.** Wie wird der
-   Descriptor bei kompromittiertem
-   Bobs-Schlüssel rotiert, ohne
-   laufende Zahlungen zu verwerfen?
-7. **Reorg-Behandlung.** Was passiert mit
-   Bobs Scan-Ergebnissen, wenn ein Block
-   reorged wird? (Vorschlag: Scan
-   ausschließlich auf bestätigten Blöcken.)
-8. **Claim-Order.** Kann Bob mehrere Claims in
-   einer Transaktion bündeln, oder muss jeder
-   Claim eine eigene Transaktion sein? (PROTOCOL.md
-   §2.5 legt „eigene Transaktion" nahe.)
-9. **End-Output-Exklusivität.** Wie wird die
-   Exklusivität der End-Outputs für Bob
-   kryptografisch nachgewiesen (PROTOCOL.md §3.4)?
-10. **Wallet-Integration.** Wie werden
-    Descriptor-Erzeugung, Scan und Claim in
-    die bestehende Epic-Wallet integriert,
-    ohne die Mainnet-Kompatibilität zu
-    gefährden?
+4. **Multi-payment correlatability.** How is it
+   prevented that three payments from the same
+   descriptor become publicly linkable (PROTOCOL.md §3.7)?
+5. **Amount leakage during scan.** Does the scan
+   additionally reveal amount information beyond the
+   output itself, beyond the range proof?
+6. **Descriptor rotation.** How is the descriptor
+   rotated when Bob's key is compromised, without
+   discarding ongoing payments?
+7. **Reorg handling.** What happens to Bob's
+   scan results when a block is reorged? (Proposal:
+   scan only on confirmed blocks.)
+8. **Claim order.** Can Bob bundle multiple claims in
+   one transaction, or must each claim be its own
+   transaction? (PROTOCOL.md §2.5 suggests
+   "own transaction".)
+9. **End-output exclusivity.** How is the exclusivity
+   of the final outputs for Bob cryptographically
+   proven (PROTOCOL.md §3.4)?
+10. **Wallet integration.** How are descriptor
+    generation, scan, and claim integrated into the
+    existing Epic wallet without endangering
+    Mainnet compatibility?
 
-Diese Fragen werden im nächsten Design-Pass
-behandelt. Bis dahin gilt PROTOCOL.md als
-oberste Priorität.
+These questions are addressed in the next design pass.
+Until then, PROTOCOL.md remains the top priority.

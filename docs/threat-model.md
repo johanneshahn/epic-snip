@@ -1,73 +1,67 @@
-# Bedrohungsmodell — überholt durch PROTOCOL.md
+# Threat Model — superseded by PROTOCOL.md
 
-**Status: HISTORISCH und überholt durch
+**Status: HISTORICAL and superseded by
 [PROTOCOL.md](../PROTOCOL.md).**
 
-Dieses Dokument beschrieb das Bedrohungsmodell des
-In-Memory-POC. Es ist **nicht** das Bedrohungsmodell
-des in PROTOCOL.md definierten Ziel-Protokolls.
+This document described the threat model of the
+in-memory POC. It is **not** the threat model of the
+target protocol defined in PROTOCOL.md.
 
 ---
 
-## Historischer Inhalt
+## Historical Content
 
-Angreifer konnten `PendingEnvelope`-Nachrichten
-manipulieren, Payment-IDs anpassen oder gleichzeitig
-von Alice und Bob ausgeben. Der In-Memory-Ledger lehnte
-manipulierte oder an einen anderen Pfad gebundene
-AgSig-Signaturen ab. Die zentrale Zustandsänderung
-verhinderte eine zweite Ausgabe im selben Ledger.
+Attackers could manipulate `PendingEnvelope` messages,
+adjust payment IDs, or spend simultaneously from Alice
+and Bob. The in-memory ledger rejected manipulated
+or path-bound AgSig signatures. The central state
+change prevented a second spend within the same ledger.
 
-Vorausgesetzt wurden die Unfälschbarkeit von
-secp256k1-AgSig, der Schutz der privaten Keys
-(Alice's Ephemeralschlüssel, Bobs Receiver-Schlüssel)
-und eine atomare Ausführung eines
-`OneSidedLedger`-Aufrufs. Schlüsselverlust oder
--diebstahl, DoS, Zensur, Datenrennen ohne geeignete
-äußere Synchronisierung, Serialisierungsfehler,
-Hash-Kollisionen und Speichererschöpfung waren nicht
-gelöst. Bei paralleler Benutzung musste der Aufrufer
-das Ledger beispielsweise mit `Mutex` schützen.
+Assumed were the unforgability of
+secp256k1-AgSig, protection of private keys
+(Alice's ephemeral key, Bob's receiver key)
+and atomic execution of a
+`OneSidedLedger` call. Key loss or theft,
+DoS, censorship, data races without suitable
+external synchronization, serialization errors,
+hash collisions, and memory exhaustion were not
+solved. With parallel use the caller had to
+protect the ledger, for example with a `Mutex`.
 
-Nicht modelliert waren Netzwerk, Mempool, Reorgs,
-Gebühren, UTXO-Konsens, reale Wallets,
-Zuverlässigkeit des `PendingEnvelope`-Kanals und
-Betragsvertraulichkeit. Dies war keine formale
-Sicherheitsanalyse und keine Aussage zu Epic Cash
-oder Mimblewimble.
+Not modeled were network, mempool, reorgs,
+fees, UTXO consensus, real wallets,
+reliability of the `PendingEnvelope` channel, and
+amount confidentiality. This was not a formal
+security analysis and made no statement about
+Epic Cash or Mimblewimble.
 
-## Offene Bedrohungsfragen für das neue SNIP-Protokoll
+## Open Threat Questions for the New SNIP Protocol
 
-Die in PROTOCOL.md definierte Ziel-Implementierung
-bringt neue Bedrohungsfragen mit, die noch nicht
-analyse- und dokumentationspflichtig sind:
+The target implementation defined in PROTOCOL.md
+brings new threat questions that still need to be
+analyzed and documented:
 
-- **Descriptor-Leakage:** Kann ein Angreifer aus dem
-  Payment Descriptor auf Bobs langfristiges
-  Schlüsselmaterial schließen?
-- **Multi-Zahlungs-Korrelation:** Sind die drei
-  unabhängigen Zahlungen öffentlich
-  verknüpfbar (PROTOCOL.md §3.7)?
-- **Scan-Korrelierbarkeit:** Kann ein
-  Beobachter Bobs Scan-Aktivität mit
-  Alices Zahlungen korrelieren?
-- **Claim-Korrelierbarkeit:** Lässt sich Bobs
-  Claim-Transaktion zu einem bestimmten
-  Zahlungsausgang zuordnen?
-- **Descriptor-Wiederverwendung:** Wie viele
-  Zahlungen kann Alice aus einem Descriptor
-  ableiten, bevor eine Wiederverwendungs-
-  Signatur auffällt?
-- **Betrag-Leakage:** Entdeckt der Scan
-  zusätzlich zum Output selbst
-  Betragsinformation, die über den
-  Range-Proof hinausgeht?
-- **Descriptor-Rotation:** Wie wird der
-  Descriptor bei kompromittiertem
-  Bobs-Schlüssel rotiert, ohne
-  laufende Zahlungen zu verwerfen?
+- **Descriptor leakage:** Can an attacker infer Bob's
+  long-term key material from the payment descriptor?
+- **Multi-payment correlation:** Are the three
+  independent payments publicly linkable
+  (PROTOCOL.md §3.7)?
+- **Scan correlatability:** Can an observer
+  correlate Bob's scan activity with
+  Alice's payments?
+- **Claim correlatability:** Can Bob's claim
+  transaction be linked to a specific payment
+  output?
+- **Descriptor reuse:** How many payments can Alice
+  derive from a descriptor before a reuse
+  signature becomes noticeable?
+- **Amount leakage:** Does the scan reveal
+  additional amount information beyond the output
+  itself, beyond the range proof?
+- **Descriptor rotation:** How is the descriptor
+  rotated when Bob's key is compromised, without
+  discarding ongoing payments?
 
-Diese Fragen werden in der
-Forschungsphase nach der vollständigen
-3-Zahlungs-Demonstration behandelt. Sie sind
-**nicht** Teil der aktuellen Akzeptanz.
+These questions are addressed in the research phase
+after the complete 3-payment demonstration. They are
+**not** part of the current acceptance.

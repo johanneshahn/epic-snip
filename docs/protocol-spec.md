@@ -1,69 +1,70 @@
-# Protokollspezifikation — überholt durch PROTOCOL.md
+# Protocol Specification — superseded by PROTOCOL.md
 
-**Status: HISTORISCH und überholt durch
+**Status: HISTORICAL and superseded by
 [PROTOCOL.md](../PROTOCOL.md).**
 
-Dieses Dokument beschrieb die frühe In-Memory-POC-Modellierung
-in `src/one_sided.rs`. Es ist **nicht** die heute gültige
-Protokollbeschreibung. Die oberste Priorität und die
-vollständige Funktionalspezifikation stehen in
+This document described the early in-memory POC modeling
+in `src/one_sided.rs`. It is **not** the currently valid
+protocol description. The top priority and the
+complete functional specification are in
 [PROTOCOL.md](../PROTOCOL.md).
 
 ---
 
-## Historischer Inhalt
+## Historical Content
 
-### Modell (In-Memory, keine Chain)
+### Model (In-Memory, no chain)
 
-`src/one_sided.rs` modellierte einen one-sided
-shared-redeemable-Zahlungsablauf. Bob erzeugte einen
-langfristigen `ReceiverKey` (secp256k1) und veröffentlichte
-den öffentlichen Scan-Schlüssel. Alice erzeugte für jede
-Zahlung einen neuen Ephemeralschlüssel `a` und leitete aus
-`ECDH(a, B)` einen domänenseparierten gemeinsamen Blind ab.
-Aus diesem Blind entstand ein Pedersen Commitment und ein
-`PendingEnvelope` mit dem ephemeralen öffentlichen Schlüssel
-`A`.
+`src/one_sided.rs` modeled a one-sided
+shared-redeemable payment flow. Bob generated a
+long-term `ReceiverKey` (secp256k1) and published
+the public scan key. Alice generated a fresh
+ephemeral key `a` for each payment and derived a
+domain-separated shared blind from
+`ECDH(a, B)`. From this blind a Pedersen commitment
+and a `PendingEnvelope` with the ephemeral public key
+`A` were created.
 
-Bob empfing das Envelope über einen modellierten einseitigen
-Wallet-Nachrichtenkanal, scannte es mit `b`, berechnete
-`ECDH(b, A)` und erkannte nur bei passendem Commitment seine
-Zahlung. Er erhielt dann ein `ClaimCapability` mit dem
-gemeinsamen Blind.
+Bob received the envelope through a modeled one-sided
+wallet message channel, scanned it with `b`, computed
+`ECDH(b, A)` and recognized his payment only on a
+matching commitment. He then received a
+`ClaimCapability` with the shared blind.
 
-### Zustandsautomat (In-Memory)
+### State Machine (In-Memory)
 
-Der `OneSidedLedger` hatte drei Zustände:
+The `OneSidedLedger` had three states:
 
-- `Pending`: Output ist noch nicht ausgegeben.
-- `Claimed`: Bob hat den Output auf einen eigenen Schlüssel
-  übertragen.
-- `SenderSpent`: Alice hat den Output konkurrierend
-  ausgegeben.
+- `Pending`: output not yet spent.
+- `Claimed`: Bob transferred the output to a key
+  exclusively controlled by him.
+- `SenderSpent`: Alice spent the output competitively.
 
-Endzustände besitzen keine ausgehenden Übergänge. Der Ledger
-akzeptierte nur den ersten gültigen Pfad: `Claim XOR
+Terminal states have no outgoing transitions. The ledger
+accepted only the first valid path: `Claim XOR
 SenderSpend`.
 
-### AgSig-Autorisierung
+### AgSig Authorization
 
-Die AgSig-Signatur band `payment_id`, Pfad
-(`claim`/`sender-spend`), Ursprungs-Commitment,
-Ziel-Commitment und Betrag. Eine Claim-Autorisierung konnte
-nicht für `sender_spend` umgewidmet werden und umgekehrt.
+The AgSig signature bound `payment_id`, path
+(`claim`/`sender-spend`), origin commitment,
+destination commitment, and amount. A claim
+authorization could not be repurposed for
+`sender_spend` and vice versa.
 
-## Warum überholt
+## Why Superseded
 
-Diese In-Memory-Spezifikation erfüllte **keine** der in
-PROTOCOL.md §3 definierten bindenden Anforderungen:
+This in-memory specification fulfilled **none** of the
+binding requirements defined in
+PROTOCOL.md §3:
 
-| Anforderung (PROTOCOL.md §3) | POC-Erfüllung |
+| Requirement (PROTOCOL.md §3) | POC fulfillment |
 | --- | --- |
-| 3.5 Epic-Cash-Konsens | ❌ kein Konsens |
-| 3.2 Bob bestimmt Betrag aus der Chain | ⚠️ nur via Wallet-Nachricht |
-| 3.1 Bob erkennt ohne Kommunikation | ⚠️ via Wallet-Nachricht, nicht Chain-Scan |
-| 3.7 Keine überflüssig verknüpfbare Info | ⚠️ Wallet-Nachricht enthält Zahlungsdetail |
+| 3.5 Epic Cash consensus | ❌ no consensus |
+| 3.2 Bob determines amount from the chain | ⚠️ only via wallet message |
+| 3.1 Bob recognizes without communication | ⚠️ via wallet message, not chain scan |
+| 3.7 No superfluous linkable info | ⚠️ wallet message contains payment detail |
 
-Die heute gültige Spezifikation verlangt die
-vollständige Demonstration in der Usernet-Chain
-ohne externe Wallet-Nachrichten.
+The currently valid specification requires the
+complete demonstration in the Usernet chain
+without external wallet messages.

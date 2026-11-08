@@ -1,55 +1,55 @@
-# Übergabe: Weiterarbeit an Epic SNIP — überholt
+# Handover: Further Work on Epic SNIP — superseded
 
-**Status: HISTORISCH und überholt durch
+**Status: HISTORICAL and superseded by
 [PROTOCOL.md](../PROTOCOL.md).**
 
-Dieses Dokument beschrieb den Übergabepunkt von der
-In-Memory-POC-Phase zur Chain-Phase. Es ist **nicht**
-mehr gültig. Die heute aktive Arbeit wird in
-[CURRENT_STEP.md](../CURRENT_STEP.md) geführt.
+This document described the handover point from the
+in-memory POC phase to the chain phase. It is **no longer**
+valid. Today's active work is tracked in
+[CURRENT_STEP.md](../CURRENT_STEP.md).
 
 ---
 
-## Historischer Inhalt
+## Historical Content
 
-### Ausgangspunkt (historisch)
+### Starting point (historical)
 
-Der POC modellierte einen one-sided
-shared-redeemable-Zahlungsablauf. Alice erzeugte ohne
-Antwort von Bob einen Output, den Bob über einen
-veröffentlichten Scan-Schlüssel und eine externe
-Wallet-Nachricht erkennen konnte. Alice und Bob
-leiteten beide eine gemeinsame Spend-Fähigkeit ab. Bob
-musste den Output auf einen ausschließlich von ihm
-kontrollierten Schlüssel übertragen. Erst dessen
-Bestätigung schloss den semi-interaktiven Transfer ab.
+The POC modeled a one-sided
+shared-redeemable payment flow. Alice created an
+output without a response from Bob, which Bob could
+recognize through a published scan key and an external
+wallet message. Both Alice and Bob
+derived a shared spending capability. Bob
+had to transfer the output to a key exclusively
+controlled by him. Only its
+confirmation completed the semi-interactive transfer.
 
-Der Code unter `src/one_sided.rs` und die Tests unter
-`tests/` prüften diese Eigenschaften nur im
-Arbeitsspeicher. Sie modellierten weder einen UTXO-Satz
-noch eine echte Mimblewimble-Transaktion.
+The code under `src/one_sided.rs` and the tests under
+`tests/` verified these properties only in
+memory. They modeled neither a UTXO set
+nor a real Mimblewimble transaction.
 
-Es gab bewusst keinen Konsensstatus „pending" und keine
-Anforderung, Alice vor dieser verpflichtenden
-Abschlussübertragung auszusperren.
+There was deliberately no consensus status "pending" and no
+requirement to lock Alice out before this mandatory
+final transfer.
 
-### Weiterarbeit (historisch)
+### Further work (historical)
 
-Die Weiterarbeit in `upstream/epic` umfasste:
+The further work in `upstream/epic` included:
 
-- Usernet-Chain-Roundtrip (1 Zahlung)
-- BobClaim-Konsenspfad
-- Spend-Attribution-Forschung
-- AliceReclaim-Entfernung
+- Usernet chain roundtrip (1 payment)
+- BobClaim consensus path
+- Spend-attribution research
+- AliceReclaim removal
 - Verdict **VERIFIED**
 
-Alle diese Punkte sind **abgeschlossen** und in ihren
-jeweiligen Dokumenten dokumentiert.
+All of these points are **completed** and documented in their
+respective documents.
 
-## Übergang zur neuen SNIP-Spezifikation
+## Transition to the new SNIP specification
 
-Die heutige Aufgabe ist die vollständige Demonstration
-des 3-Zahlungs-Flows gemäß
-[PROTOCOL.md](../PROTOCOL.md) §5. Der genaue Status,
-die offenen Fragen und die nächsten Schritte stehen in
+Today's task is the complete demonstration of the
+3-payment flow per
+[PROTOCOL.md](../PROTOCOL.md) §5. The exact status,
+open questions, and next steps are in
 [CURRENT_STEP.md](../CURRENT_STEP.md).

@@ -1,121 +1,104 @@
-# Receipt-Claim & SNIP: Einseitige Wiederverwendbare Zahlungen
+# Receipt-Claim & SNIP: One-Sided Reusable Payments
 
-Status: experimentelle, lokale Usernet-Implementierung.
-Weder konsenskompatibel noch kryptografisch bewiesen;
-nicht für Mainnet, Floonet oder echte Gelder geeignet.
+Status: experimental, local Usernet implementation.
+Neither consensus-compatible nor cryptographically proven;
+not suitable for Mainnet, Floonet, or real funds.
 
-> **Oberste Priorität.** Alle Inhalte dieses Dokuments
-> dienen dem in [PROTOCOL.md](../PROTOCOL.md) §2
-> und §5 definierten Transaktionsfluss:
+> **Top priority.** All content of this document serves the
+> transaction flow defined in [PROTOCOL.md](../PROTOCOL.md) §2
+> and §5:
 >
-> 1. Bob veröffentlicht einen **Payment
->    Descriptor** einmalig.
-> 2. Alice erstellt daraus **drei unabhängige
->    Zahlungen** (ohne Bob, ohne Kommunikation).
-> 3. Alle drei Zahlungen werden in der **lokalen
->    Usernet-Chain** bestätigt.
-> 4. Bob **detektiert** alle drei **durch Scannen
->    der Chain** (ohne Kommunikation mit Alice) und
->    **bestimmt Beträge**.
-> 5. Bob **claimt** jede der drei Zahlungen in einer
->    **eigenen Transaktion**.
-> 6. Alle drei Claims werden in der Usernet-Chain
->    bestätigt.
-> 7. Die **End-Outputs** sind **ausschließlich von
->    Bob auszahlbar**.
+> 1. Bob publishes a **Payment Descriptor** once.
+> 2. Alice creates **three independent payments** from it
+>    (without Bob, without communication).
+> 3. All three payments are confirmed in the **local
+>    Usernet chain**.
+> 4. Bob **detects** all three **by scanning the chain**
+>    (without communication with Alice) and **determines
+>    amounts**.
+> 5. Bob **claims** each of the three payments in a
+>    **separate transaction**.
+> 6. All three claims are confirmed in the Usernet chain.
+> 7. The **final outputs** are **exclusively spendable by
+>    Bob**.
 >
-> Gemäß [PROTOCOL.md §6](../PROTOCOL.md): Ein
-> erfolgreicher isolierter Krypto- oder Konsens-Test
-> **ersetzt nicht** die vollständige
-> 3-Zahlungs-Demonstration.
+> Per [PROTOCOL.md §6](../PROTOCOL.md): a successful
+> isolated crypto or consensus test **does not replace** the
+> complete 3-payment demonstration.
 
-## Ziel
+## Goal
 
-Der von Alice erzeugte gemeinsame Output darf nur über
-einen nachweisbaren Auflösungspfad ausgegeben werden.
-Bob muss ihn auf einen eigenen Schlüssel übertragen,
-damit der Transfer abgeschlossen ist. Bob darf diese
-Übertragung nicht durchführen können, ohne gleichzeitig
-einen für Alice nachweisbaren Claim zu hinterlassen.
+The shared output created by Alice may only be spent via a
+verifiable resolution path. Bob must transfer it to a key
+exclusively controlled by him, so that the transfer is
+complete. Bob must not be able to perform this transfer
+without simultaneously leaving a claim verifiable by Alice.
 
-**Alice hat einen konkurrierenden Reclaim-Pfad.**
-Solange Bob den Output nicht in seine eigenen
-Outputs übertragen hat, kann Alice ihn selbst
-beanspruchen. Der erste bestätigte gültige Spend
-gewinnt (First-Confirmed-Spend-Wins). Der
-Alice-Reclaim-Pfad nutzt die bestehende
-Standard-Mechanik von Epic Cash (gewöhnlicher
-`Plain`-Kernel) und muss nicht neu erfunden werden
+**Alice has a competing reclaim path.** As long as Bob has not
+transferred the output into his own outputs, Alice can claim
+it herself. The first confirmed valid spend wins
+(First-Confirmed-Spend-Wins). The Alice-reclaim path uses the
+existing standard mechanism of Epic Cash (ordinary `Plain`
+kernel) and does not need to be reinvented
 (PROTOCOL.md §3.9).
 
-**Alice kann den Claim verifizieren.** Aus der
-Chain kann Alice nachvollziehen, dass Bob die
-Zahlungen übernommen hat (PROTOCOL.md §3.8).
+**Alice can verify the claim.** From the chain, Alice can
+follow that Bob has taken over the payments (PROTOCOL.md §3.8).
 
-Zugleich soll die Chain nicht offenlegen, welcher
-spätere Zieloutput Bob gehört. Ein Außenstehender
-soll daher nur erkennen können, dass ein spezieller
-Output geclaimt wurde; nicht, welcher neue Output
-der endgültige Bob-Output ist.
+At the same time, the chain must not reveal which later
+destination output belongs to Bob. An outsider should only be
+able to recognize that a special output was claimed; not which
+new output is Bob's final one.
 
-**Neu gegenüber der früheren POC-Spezifikation:**
-Bob muss die Zahlungen **aus der Chain** erkennen
-können — nicht aus einer externen Wallet-Nachricht.
-Er muss **Beträge** aus der Chain bestimmen können.
-Er muss **drei unabhängige Zahlungen** parallel
-detektieren und claimen können. Die End-Outputs
-müssen **ausschließlich von Bob** auszahlbar sein.
-**Alice kann den Claim verifizieren** und hat einen
-**konkurrierenden Reclaim-Pfad** (PROTOCOL.md
-§3.8 und §3.9).
+**New compared to the earlier POC specification:**
+Bob must recognize payments **from the chain** — not from an
+external wallet message. He must **determine amounts** from
+the chain. He must **detect and claim three independent
+payments** in parallel. The final outputs must be
+**exclusively spendable by Bob**. **Alice can verify the
+claim** and has a **competing reclaim path**
+(PROTOCOL.md §3.8 and §3.9).
 
-## Rollen und einmaliges Setup
+## Roles and One-Time Setup
 
-Bob erzeugt einmalig ein langfristiges
-Schlüsselmaterial und veröffentlicht den
-öffentlichen **Payment Descriptor**. Der Descriptor
-ist wiederverwendbar: aus ihm kann Alice beliebig
-viele Zahlungen ableiten, ohne Bob erneut
-einzubeziehen.
+Bob generates long-term key material once and publishes the
+public **Payment Descriptor**. The descriptor is reusable:
+from it Alice can derive arbitrarily many payments without
+involving Bob again.
 
-Der Descriptor enthält:
+The descriptor contains:
 
 ```text
 PaymentDescriptor:
   version        : u8
-  descriptor_id  : [u8; 32]   // Domain-Separator + Versions-Hash
+  descriptor_id  : [u8; 32]   // Domain-Separator + version hash
   scan_public    : PublicKey  // sG, s = scan_secret
   receipt_spend_public : PublicKey  // pG, p = receipt_spend_secret
 ```
 
-Bobs private Schlüssel (`scan_secret`,
-`receipt_spend_secret`) verbleiben ausschließlich
-in Bobs Wallet. Alice speichert den Descriptor;
-sie benötigt pro Zahlung keine neue Antwort von
-Bob.
+Bob's private keys (`scan_secret`, `receipt_spend_secret`)
+remain exclusively in Bob's wallet. Alice stores the
+descriptor; she needs no new response from Bob per payment.
 
-**Achtung:** Der Descriptor ist **öffentlich**.
-Jede Partei kann Zahlungen aus ihm ableiten.
-Nur Bob kann die Zahlungen **erkennen** (via
-`scan_secret`) und **claimen** (via
+**Caution:** The descriptor is **public**. Any party can derive
+payments from it. Only Bob can **recognize** payments (via
+`scan_secret`) and **claim** them (via
 `receipt_spend_secret`).
 
-## Stealth-Receipt-Ableitung
+## Stealth-Receipt Derivation
 
-Die lokale Forschungsimplementierung verwendet zwei
-voneinander domain-separierte ECDH-basierte
-Ableitungen. Sie ist kein kryptografischer Beweis
-und keine endgültige Protokollspezifikation; die
-folgende Notation beschreibt den implementierten
-Forschungsansatz:
+The local research implementation uses two domain-separated
+ECDH-based derivations. It is not a cryptographic proof and
+not a final protocol specification; the following notation
+describes the implemented research approach:
 
 ```text
 Bob-Descriptor: ScanPublic S = sG, ReceiptSpendPublic P = pG
-Alice pro Zahlung i:
-  r_i zufällig, Hint R_i = r_iG
-  gemeinsamer Wert: h_i = H(domain || ECDH(r_i, S) || R_i || descriptor_id)
+Alice per payment i:
+  r_i random, Hint R_i = r_i G
+  shared value: h_i = H(domain || ECDH(r_i, S) || R_i || descriptor_id)
   Bob-Receipt-Public-Key: B_i = P + h_i * G
-  Bob-Receipt-Private-Key: b_i = p + h_i   (nur Bob kennt)
+  Bob-Receipt-Private-Key: b_i = p + h_i   (only Bob knows)
 
 Shared-Spend-Blind:
   q_i = HashToScalar(
@@ -123,43 +106,37 @@ Shared-Spend-Blind:
   )
 ```
 
-Bob scannt `R_i`, berechnet `ECDH(s, R_i)` und
-damit `b_i`; Alice kann zwar `B_i`, nicht aber
-`b_i` berechnen. Die gleiche ECDH-Ausgabe lässt
-beide Seiten `q_i` ableiten: Alice kennt `r_i`,
-Bob kennt `s`. Daraus können beide dieselbe
-Commitment-Blindierung für den gemeinsamen
-Spezial-Output bilden. Die Ableitung für `q_i` ist
-explizit von der für `h_i` getrennt, damit ein
-Receipt-Autorisierungsschlüssel nicht als
-Spend-Blind wiederverwendet wird.
+Bob scans `R_i`, computes `ECDH(s, R_i)` and thereby `b_i`;
+Alice can compute `B_i` but not `b_i`. The same ECDH output
+lets both sides derive `q_i`: Alice knows `r_i`, Bob knows
+`s`. From this both can form the same commitment blind for the
+shared special output. The derivation for `q_i` is explicitly
+separated from that for `h_i`, so that a receipt authorization
+key is not reused as a spend blind.
 
-`R_i` liegt in der lokalen Implementierung als
-kanonisch serialisierter 33-Byte-Stealth-Hint am
-Receipt-Output vor. Der Core baut im lokalen
-Forschungs-API einen Receipt-Output mit `q_i`,
-rewound dessen Betrag für Bob und erstellt daraus
-eine vollständig durch
-`Transaction::validate(...)` prüfbare
-BobClaim-Transaktion.
+`R_i` is present in the local implementation as a canonically
+serialized 33-byte stealth hint on the Receipt output. The core
+builds, in the local research API, a Receipt output with `q_i`,
+rewinds its amount for Bob, and creates a fully
+`Transaction::validate(...)`-verifiable BobClaim transaction
+from it.
 
-## Konsensformat (Usernet-only)
+## Consensus Format (Usernet-only)
 
-Ein Receipt-Output bindet bei seiner Entstehung:
+A Receipt output binds at creation time:
 
 ```text
 SharedReceiptKeyHashes:
   bob   : [u8; 32]   // H(domain || B_i)
-  alice : [u8; 32]   // H(domain || A_i)  // für Alice-Reclaim
-  hint  : [u8; 33]   // R_i (kanonisch serialisiert)
+  alice : [u8; 32]   // H(domain || A_i)  // for Alice-reclaim
+  hint  : [u8; 33]   // R_i (canonically serialized)
 ```
 
-**Wichtig:** Der `alice`-Hash ist für den
-Alice-Reclaim-Pfad erforderlich. Beide Hashes
-werden beim Output-Erstellungszeitpunkt fest
-gelegt und sind Teil der UTXO-Identität.
+**Important:** The `alice` hash is required for the
+Alice-reclaim path. Both hashes are fixed at output creation
+time and are part of the UTXO identity.
 
-Ein `BobClaim`-Kernel enthält:
+A `BobClaim` kernel contains:
 
 ```text
 BobClaim:
@@ -170,46 +147,38 @@ BobClaim:
   )
 ```
 
-Der Alice-Reclaim-Pfad nutzt den
-**gewöhnlichen `Plain`-Kernel** aus Epic Cash.
-Es gibt keinen separaten
-`AliceReclaim`-Kerneltyp. Alice baut eine
-Standard-Epic-Transaktion, die den
-Shared-Output (`Receipt`-Feature) ausgibt.
+The Alice-reclaim path uses the **ordinary `Plain` kernel**
+from Epic Cash. There is no separate `AliceReclaim` kernel
+type. Alice builds a standard Epic transaction that spends
+the `Receipt`-feature output.
 
-Die Validierung im Node prüft:
+Node validation checks:
 
-1. `C` ist ein als Input dieser Transaktion
-   ausgegebener Receipt-Output.
-2. Für `BobClaim`: Der dort gespeicherte
-   Key-Hash entspricht dem Bob-Key
-   (`hashes.bob == H(B_i)`) und die
-   `receipt_signature` über den kanonisch
-   definierten Bindungswert ist gültig.
-3. Alle normalen Regeln für
-   Transaktionsbilanz, Range Proofs, Fee und
-   Kernel-Signatur erfüllen sich ebenfalls.
-4. Jede Ausgabe eines Receipt-Outputs enthält
-   genau einen passenden Resolution-Kernel
-   (entweder `BobClaim` oder `Plain`).
-   *(Anmerkung: Die aktuelle Konsensregel
-   verlangt BobClaim. Eine Anpassung ist
-   erforderlich, um §3.9 zu erfüllen — siehe
+1. `C` is a Receipt output spent as input of this
+   transaction.
+2. For `BobClaim`: the stored key hash matches the Bob key
+   (`hashes.bob == H(B_i)`) and the `receipt_signature`
+   over the canonically defined binding value is valid.
+3. All normal rules for transaction balance, range proofs,
+   fee, and kernel signature are also satisfied.
+4. Each spend of a Receipt output contains exactly one
+   matching resolution kernel (either `BobClaim` or
+   `Plain`).
+   *(Note: the current consensus rule requires BobClaim.
+   An adjustment is required to satisfy §3.9 — see
    CURRENT_STEP.md.)*
-5. **First-Confirmed-Spend-Wins:** Wenn Bob
-   bereits claimed hat (Output ist consumed),
-   wird ein späterer Alice-Spend abgewiesen
-   (`AlreadySpent`). Umgekehrt gilt dasselbe.
+5. **First-Confirmed-Spend-Wins:** If Bob has already
+   claimed (output is consumed), a later Alice spend is
+   rejected (`AlreadySpent`). The reverse holds as well.
 
-## Scan für Bob (neuer, noch zu implementierender Teil)
+## Scan for Bob (new part still to be implemented)
 
-**Diese Api ist noch nicht in
-`upstream/epic` implementiert.** Sie ist der
-wichtigste Baustein, der für die SNIP-Akzeptanz
-fehlt.
+**This API is not yet implemented in
+`upstream/epic`.** It is the most important building block
+missing for SNIP acceptance.
 
 ```rust
-// Vorschlag für die Scan-Api
+// Proposed scan API
 pub fn scan_for_bob(
     receipt_spend_secret_key: SecretKey,
     scan_secret_key: SecretKey,
@@ -217,43 +186,41 @@ pub fn scan_for_bob(
     chain: &ChainHandle,
 ) -> Vec<DetectedPayment>
 {
-    // Für jeden Receipt-Output in der Chain:
+    // For each Receipt output in the chain:
     //   1. ECDH(scan_secret, hint) → h_i
     //   2. B_i = P + h_i * G
-    //   3. H(B_i) == hashes.bob? → Detektion!
-    //   4. q_i ableiten → Betrag rewinden
+    //   3. H(B_i) == hashes.bob? → detection!
+    //   4. derive q_i → rewind amount
     // → DetectedPayment { output_index, amount, hint }
 }
 ```
 
-Jeder `DetectedPayment` enthält genug
-Information, damit Bob seine Claim-Transaktion
-bauen kann, ohne Alice zu kontaktieren.
+Each `DetectedPayment` contains enough information for Bob to
+build his claim transaction without contacting Alice.
 
-**Effizienz-Frage (offen):** Der naive Scan prüft
-jeden `Receipt`-Output gegen jeden
-`descriptor_id`. Für die Usernet-Akzeptanz
-genügt das; für ein produktives Wallet wäre ein
-Index über `H(descriptor_id)` in
-`SharedReceiptKeyHashes` erforderlich.
+**Efficiency question (open):** The naive scan checks every
+`Receipt` output against every `descriptor_id`. For Usernet
+acceptance this suffices; for a production wallet an index
+over `H(descriptor_id)` in `SharedReceiptKeyHashes` would be
+required.
 
-## Vorgeschlagener 3-Zahlungs-Flow (Akzeptanz)
+## Proposed 3-Payment Flow (Acceptance)
 
 ```text
 Bob:
   d = PaymentDescriptor.create()
-  // veröffentlicht d an Alice (einmalig)
+  // publishes d to Alice (once)
 
 Alice:
   payment_1 = Payment.create(d, amount=100, alice_blind_1)
   payment_2 = Payment.create(d, amount=200, alice_blind_2)
   payment_3 = Payment.create(d, amount=300, alice_blind_3)
-  // bringt alle drei in Usernet-Blöcke:
+  // brings all three into Usernet blocks:
   mine_block(payment_1)
   mine_block(payment_2)
   mine_block(payment_3)
 
-Bob (ohne Kommunikation mit Alice):
+Bob (without communication with Alice):
   detected = scan_for_bob(
     receipt_spend_secret, scan_secret, d, chain
   )
@@ -267,203 +234,164 @@ Bob (ohne Kommunikation mit Alice):
       receipt_spend_secret, scan_secret, d, payment
     )
     mine_block(claim_tx)
-  // alle drei Claims bestätigt
+  // all three claims confirmed
 
-Alice (Verifizierung, PROTOCOL.md §3.8):
+Alice (verification, PROTOCOL.md §3.8):
   for payment in [payment_1, payment_2, payment_3]:
     verify_bob_claimed(payment)
-    // Alice kann aus der Chain nachvollziehen,
-    // dass Bob den Output geclaimt hat und die
-    // Mittel nun in Bobs End-Outputs stecken.
+    // Alice can follow from the chain
+    // that Bob has claimed the output and that
+    // the funds now reside in Bob's final outputs.
 
-End-Outputs:
-  // jeder End-Output ist nur von Bobs
-  // Ziel-Schlüssel auszahlbar; jeder
-  // andere Spend-Versuch wird abgewiesen.
+Final outputs:
+  // each final output is spendable only by Bob's
+  // target key; any other spend attempt is rejected.
 
-Alternativ: Alice-Reclaim (PROTOCOL.md §3.9):
-  // Falls Bob NICHT claimt:
-  // Alice baut eine gewöhnliche Epic-Transaktion
-  // (Plain-Kernel), die den Shared-Output ausgibt.
+Alternative: Alice-Reclaim (PROTOCOL.md §3.9):
+  // If Bob does NOT claim:
+  // Alice builds an ordinary Epic transaction
+  // (Plain kernel) that spends the shared output.
   alice_spend = PlainSpend.build(
     shared_blind, destination_blind
   )
   mine_block(alice_spend)
-  // Alice-Spend erfolgreich, Zahlung geht
-  // an Alices eigenen Output.
-  // Bob kann den Output danach NICHT mehr
-  // claimen (bereits spent).
+  // Alice spend succeeds, payment goes
+  // to Alice's own output.
+  // Bob can no longer claim the output
+  // (already spent).
 ```
 
-## Lokaler Implementierungsstand
+## Local Implementation State
 
-Im lokalen Subprojekt `upstream/epic` ist ein
-erster Usernet-only Core-Schritt implementiert und
-durch Core-Unit-Tests abgedeckt:
+In the local subproject `upstream/epic`, a first
+Usernet-only core step is implemented and covered by
+core unit tests:
 
-- `OutputFeatures::Receipt` trägt einen
-  Bob-only-`SharedReceiptKeyHashes`
-  (`bob: [u8; 32]`) sowie einen kanonisch
-  geprüften 33-Byte-Stealth-Hint. Input, Output
-  und MMR-Output-Identifier serialisieren diese
-  Daten mit.
-- Der Core enthält ein experimentelles
-  ECDH-/Tweak-Primitiv: Alice kann aus Bobs
-  öffentlichem Descriptor und einem frischen
-  Ephemeralschlüssel einen Bob-Receipt-Public-Key
-  bilden, während Bob aus Hint und seinen
-  privaten Descriptor-Schlüsseln den zugehörigen
-  privaten Receipt-Key ableitet.
-- Der Core leitet außerdem einen getrennten
-  gemeinsamen Spend-Blind ab. Alice und Bob
-  erhalten daraus unabhängig dasselbe
-  Commitment für den Spezial-Output. Der
-  Forschungs-Builder erstellt daraus einen
-  gültigen Receipt-Range-Proof; Bob kann dessen
-  Betrag mit einem aus dem Shared-Blind
-  abgeleiteten Rewind-Nonce lesen.
-- Ein lokaler Roundtrip baut anschließend eine
-  ein-input/ein-output BobClaim-Transaktion mit
-  normalem Zieloutput, gültigem Range Proof,
-  Kernel-Signatur, Receipt-Signatur und
-  korrekter Kernel-Summe. Der Test ruft
-  `Transaction::validate(...)` im Usernet-Modus
-  auf.
-- `libtx::build::receipt_output(...)` erzeugt
-  einen experimentellen Receipt-Output mit
-  Key-Hashes und Hint; der reguläre
-  Proof-Builder erzeugt weiterhin dessen Range
-  Proof.
-- `KernelFeatures::BobClaim` (U8 = 3) trägt die
-  jeweilige Fee und ein `ReceiptClaim`-Transkript.
-- Das Transkript bindet per domain-separierter
-  Signatur Pfad, ursprüngliches Commitment,
-  Kernel-Excess und Fee. Der Node prüft die
-  normale Kernel-Signatur und anschließend diese
-  Bindung.
-- Eine Transaktions-Body-Prüfung verlangt eine
-  Eins-zu-eins-Zuordnung zwischen jedem
-  ausgegebenen Receipt-Input und einem passenden
-  Resolution-Kernel samt registriertem
-  Receipt-Key-Hash.
-- Receipt-Features werden in dieser
-  experimentellen Stufe außerhalb des
-  Usernet-Modus abgelehnt.
-- Der Alice-Reclaim-Pfad nutzt den
-  **gewöhnlichen `Plain`-Kernel** aus Epic Cash
-  (PROTOCOL.md §3.9). Es gibt keinen separaten
-  `AliceReclaim`-Kerneltyp.
+- `OutputFeatures::Receipt` carries a Bob-only
+  `SharedReceiptKeyHashes` (`bob: [u8; 32]`) plus a
+  canonically validated 33-byte stealth hint. Input, output,
+  and MMR output identifier serialize these data.
+- The core contains an experimental ECDH/tweak primitive:
+  Alice can form a Bob receipt public key from Bob's
+  public descriptor and a fresh ephemeral key, while Bob
+  derives the corresponding private receipt key from the
+  hint and his private descriptor keys.
+- The core also derives a separate shared spend blind.
+  Alice and Bob independently obtain the same
+  commitment for the special output. The research builder
+  creates a valid Receipt range proof from it; Bob can
+  read its amount with a rewind nonce derived from the
+  shared blind.
+- A local roundtrip then builds a one-input/one-output
+  BobClaim transaction with a normal destination output,
+  valid range proof, kernel signature, receipt signature,
+  and correct kernel sum. The test calls
+  `Transaction::validate(...)` in Usernet mode.
+- `libtx::build::receipt_output(...)` creates an
+  experimental Receipt output with key hashes and hint;
+  the regular proof builder still creates its range proof.
+- `KernelFeatures::BobClaim` (U8 = 3) carries the
+  respective fee and a `ReceiptClaim` transcript.
+- The transcript binds, via a domain-separated signature,
+  path, original commitment, kernel excess, and fee. The
+  node first checks the normal kernel signature and then
+  this binding.
+- A transaction-body check requires a one-to-one
+  mapping between each spent Receipt input and a matching
+  resolution kernel plus registered receipt-key hash.
+- Receipt features are rejected outside Usernet mode
+  in this experimental stage.
+- The Alice-reclaim path uses the ordinary `Plain` kernel
+  from Epic Cash (PROTOCOL.md §3.9). There is no
+  separate `AliceReclaim` kernel type.
 
-Ein lokaler Chain-Integrationstest
-(`receipt_claim_roundtrip.rs`) erzeugt einen
-Usernet-Genesisblock, mint eine reife
-Test-Coinbase, nimmt Alice' Receipt-Funding-
-Transaktion in einen Block auf und nimmt Bobs
-Claim in einem späteren Block auf. Er prüft
-danach, dass der Receipt-UTXO verbraucht, Bobs
-Zieloutput unspent und die vollständige
-TxHashset-Validierung erfolgreich ist.
+A local chain integration test
+(`receipt_claim_roundtrip.rs`) creates a Usernet genesis
+block, mints a mature test coinbase, includes Alice's
+receipt funding transaction in a block, and includes Bob's
+claim in a later block. It then verifies that the receipt
+UTXO is consumed, Bob's destination output is unspent, and
+full TxHashset validation succeeds.
 
-**Noch nicht vorhanden:**
+**Not yet available:**
 
-- Die `scan_for_bob`-Api (s.o.)
-- Ein Integrationstest, der drei unabhängige
-  Zahlungen in einem Durchlauf demonstriert
-- Die `PaymentDescriptor`-Abstraktion als
-  eigener Typ (aktuell implizit über
-  `receipt_spend_public_key` +
+- The `scan_for_bob` API (see above)
+- An integration test demonstrating three independent
+  payments in one run
+- The `PaymentDescriptor` abstraction as its own type
+  (currently implicit via `receipt_spend_public_key` +
   `scan_public_key`)
-- Wallet-Integration von Descriptor-Erzeugung,
-  Scan und Claim
-- P2P-Versionierung, Mempool-Admission,
-  laufende Node-/Miner-Integration
+- Wallet integration of descriptor generation, scan, and
+  claim
+- P2P versioning, mempool admission, running
+  node/miner integration
 
-## Was öffentlich und privat bleibt
+## What Is Public and What Stays Private
 
-| Information | Sichtbarkeit |
+| Information | Visibility |
 | --- | --- |
-| Payment Descriptor | dauerhaft öffentlich (von Bob veröffentlicht) |
-| Stealth-Hint `R_i` pro Zahlung | öffentlich, aber pro Zahlung frisch; ohne Bobs Scan-Key keine öffentliche Zuordnung zu `B_i` |
-| Spezial-Output `C` wurde geclaimt | dauerhaft öffentlich über den Receipt-Claim-Kernel |
-| Ein einmaliger Receipt-Key hat aufgelöst | dauerhaft öffentlich |
-| Bobs endgültiger Zieloutput | nicht Bestandteil des Receipt-Claim-Kernels; nur Bob erkennt ihn beim Wallet-Scan |
-| Betrag | weiterhin durch Commitment und Range Proof verborgen, sofern keine Partei ihn offenlegt |
-| Bobs langfristiges Schlüsselmaterial | **nie** öffentlich |
+| Payment Descriptor | permanently public (published by Bob) |
+| Stealth hint `R_i` per payment | public, but fresh per payment; without Bob's scan key no public link to `B_i` |
+| Special output `C` was claimed | permanently public via the Receipt-Claim kernel |
+| A one-time receipt key resolved it | permanently public |
+| Bob's final destination output | not part of the Receipt-Claim kernel; only Bob recognizes it during wallet scan |
+| Amount | still hidden by commitment and range proof, unless a party reveals it |
+| Bob's long-term key material | **never** public |
 
-## Atomare Eigenschaft
+## Atomic Property
 
-Ein Bob-Claim ist nur gültig, wenn seine
-Receipt-Signatur im gültigen `BobClaim`-Kernel
-enthalten ist. Der Alice-Reclaim nutzt den
-gewöhnlichen `Plain`-Kernel und benötigt
-keine zusätzliche Receipt-Signatur.
+A Bob claim is only valid if its receipt signature is
+contained in a valid `BobClaim` kernel. The Alice reclaim
+uses the ordinary `Plain` kernel and needs no additional
+receipt signature.
 
-**First-Confirmed-Spend-Wins.** Wenn Bob den
-Output bereits geclaimt hat (Output ist
-consumed), wird ein späterer Alice-Spend
-abgewiesen (`AlreadySpent`). Umgekehrt gilt
-dasselbe: Wenn Alice den Output ausgegeben
-hat, kann Bob den Output nicht mehr claimen.
+**First-Confirmed-Spend-Wins.** If Bob has already claimed
+(output is consumed), a later Alice spend is rejected
+(`AlreadySpent`). The reverse holds as well: if Alice has
+spent the output, Bob can no longer claim it.
 
-**Alice kann den Claim verifizieren.** Aus der
-Chain kann Alice nachvollziehen, dass Bob den
-Output geclaimt hat, indem sie den
-`BobClaim`-Kernel findet und die
-Signaturen und Key-Hashes prüft
-(PROTOCOL.md §3.8).
+**Alice can verify the claim.** From the chain, Alice can
+follow that Bob has claimed the output by finding the
+`BobClaim` kernel and checking the signatures and key
+hashes (PROTOCOL.md §3.8).
 
-## Offene Fragen
+## Open Questions
 
-1. **Scan-Effizienz.** Wie wird der Chain-Scan
-   für Bobs Wallet skaliert? (Für die
-   Usernet-Akzeptanz ist der naive Scan
-   ausreichend.)
-2. **Descriptor-Index.** Soll
-   `SharedReceiptKeyHashes` einen separaten
-   Index über `H(descriptor_id)` enthalten,
-   damit der Scan nicht jeden
-   `Receipt`-Output gegen jeden
-   `descriptor_id` prüfen muss?
-3. **Multi-Zahlungs-Korrelierbarkeit.** Können
-   drei Zahlungen aus demselben Descriptor
-   öffentlich korreliert werden?
+1. **Scan efficiency.** How does Bob's wallet scan scale?
+   (For Usernet acceptance the naive scan suffices.)
+2. **Descriptor index.** Should `SharedReceiptKeyHashes`
+   contain a separate index over `H(descriptor_id)` so the
+   scan does not check every `Receipt` output against
+   every `descriptor_id`?
+3. **Multi-payment correlatability.** Can three payments
+   from the same descriptor be publicly correlated?
    (PROTOCOL.md §3.7.)
-4. **Betrag-Leakage beim Scan.** Findet der
-   Scan zusätzlich zum Output selbst
-   Betragsinformation, die über den
-   Range-Proof hinausgeht?
-5. **Claim-Order.** Kann Bob mehrere Claims in
-   einer Transaktion bündeln, oder muss jeder
-   Claim eine eigene Transaktion sein?
-   (PROTOCOL.md §2.5 legt „eigene
-   Transaktion" nahe.)
-6. **End-Output-Exklusivität.** Wie wird die
-   Exklusivität der End-Outputs für Bob
-   kryptografisch nachgewiesen (PROTOCOL.md
-   §3.4)?
-7. **Reorg-Behandlung.** Was passiert mit
-   Bobs Scan-Ergebnissen, wenn ein Block
-   reorged wird?
-8. **Wallet-Integration.** Wie werden
-   Descriptor-Erzeugung, Scan und Claim in
-   die bestehende Epic-Wallet integriert,
-   ohne die Mainnet-Kompatibilität zu
-   gefährden?
-9. **Alice-Reclaim-Konsensanpassung.** Wie
-   wird der Konsens so angepasst, dass ein
-   `Plain`-Kernel einen `Receipt`-Input ausgeben
-   darf, während Bob-Claims weiterhin die
-   `ReceiptClaim`-Attribution erfordern? (Siehe
-   CURRENT_STEP.md, Optionen A und B.)
-10. **Alice-Verifizierung.** Wie genau kann
-    Alice aus der Chain verifizieren, dass
-    Bob die Zahlungen übernommen hat?
+4. **Amount leakage during scan.** Does the scan reveal
+   additional amount information beyond the output itself,
+   beyond the range proof?
+5. **Claim order.** Can Bob bundle multiple claims in
+   one transaction, or must each claim be its own
+   transaction? (PROTOCOL.md §2.5 suggests "own
+   transaction".)
+6. **End-output exclusivity.** How is the exclusivity of
+   the final outputs for Bob cryptographically proven
+   (PROTOCOL.md §3.4)?
+7. **Reorg handling.** What happens to Bob's scan results
+   when a block is reorged?
+8. **Wallet integration.** How are descriptor generation,
+   scan, and claim integrated into the existing Epic
+   wallet without endangering Mainnet compatibility?
+9. **Alice-reclaim consensus adjustment.** How is
+   consensus adjusted so that a `Plain` kernel may spend a
+   `Receipt` input while Bob claims still require
+   `ReceiptClaim` attribution? (See CURRENT_STEP.md,
+   options A and B.)
+10. **Alice verification.** How exactly can Alice verify
+    from the chain that Bob has taken over the payments?
     (PROTOCOL.md §3.8.)
-11. **Race-Condition.** Was passiert, wenn
-    Alice und Bob gleichzeitig Claim/Reclaim
-    versuchen? Wie wird der Gewinner
-    determiniert?
+11. **Race condition.** What happens when Alice and Bob
+    simultaneously attempt claim/reclaim? How is the
+    winner determined?
 
-Diese Fragen werden im nächsten Design-Pass
-behandelt. Bis dahin gilt PROTOCOL.md als
-oberste Priorität.
+These questions are addressed in the next design pass.
+Until then, PROTOCOL.md remains the top priority.

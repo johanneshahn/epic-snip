@@ -1,68 +1,69 @@
-# Isoliertes Epic-Usernet für SNIP-Experimente
+# Isolated Epic Usernet for SNIP Experiments
 
-Status: Infrastrukturentwurf. Dieser Ablauf nutzt ausschließlich das lokale
-`upstream/epic`-Subprojekt und verbindet sich nicht mit Mainnet oder Floonet.
-Er enthält einen lokalen, experimentellen Receipt-Claim-Konsenspfad. Dieser
-ist nur für Usernet vorgesehen, uncommittet und weder auditiert noch
-netzwerk-/mainnet-kompatibel.
+Status: Infrastructure design. This setup uses only the local
+`upstream/epic` subproject and does not connect to Mainnet or Floonet.
+It contains a local, experimental receipt-claim consensus path. This
+is intended for Usernet only, uncommitted, unaudited, and neither
+network- nor mainnet-compatible.
 
-> **Oberste Priorität.** Die Usernet-Infrastruktur dient der
-> vollständigen 3-Zahlungs-Demonstration gemäß
+> **Top priority.** The Usernet infrastructure serves the
+> complete 3-payment demonstration per
 > [PROTOCOL.md](../PROTOCOL.md) §5:
-> Bob veröffentlicht einen Payment Descriptor einmalig,
-> Alice erstellt drei unabhängige Zahlungen, alle drei
-> werden in der Usernet-Chain bestätigt, Bob detektiert
-> sie durch Scannen, Bob claimt jede in eigener
-> Transaktion, und die End-Outputs sind
-> ausschließlich von Bob auszahlbar.
+> Bob publishes a Payment Descriptor once,
+> Alice creates three independent payments, all three
+> are confirmed in the Usernet chain, Bob detects
+> them by scanning, Bob claims each in his own
+> transaction, and the final outputs are
+> exclusively spendable by Bob.
 >
-> Ein erfolgreicher isolierter Krypto- oder Konsens-
-> Test **ersetzt nicht** die vollständige
-> 3-Zahlungs-Demonstration
+> A successful isolated crypto or consensus test
+> **does not replace** the complete
+> 3-payment demonstration
 > ([PROTOCOL.md §6](../PROTOCOL.md)).
 
-## Vorhandene Unterstützung
+## Existing Support
 
-Der vorhandene Node unterstützt `--usernet`, das intern
-`ChainTypes::UserTesting` auswählt. Dafür sind lokale Standardendpunkte
-vorgesehen:
+The existing node supports `--usernet`, which internally
+selects `ChainTypes::UserTesting`. Local standard endpoints
+are provided for this:
 
-## Terminal-Demo ohne Wallet
+## Terminal Demo without Wallet
 
-Der lokale Core enthält eine direkte Terminal-Demo für den Stealth-Receipt-
-Ableitungspfad. Sie erzeugt keinen Block, baut aber eine gültige lokale
-Core-Transaktion: Alice erstellt einen Receipt-Output mit gültigem Range Proof;
-Bob scannt den Hint, leitet Shared-Blind und Claim-Key ab, rewound den Betrag
-und baut einen ein-input/ein-output BobClaim. Die vollständige
-`Transaction::validate(...)`-Prüfung erfolgt im Usernet-Modus:
+The local core contains a direct terminal demo for the
+stealth-receipt derivation path. It does not create a block,
+but builds a valid local core transaction: Alice creates a
+Receipt output with a valid range proof; Bob scans the hint,
+derives the shared blind and claim key, rewinds the amount,
+and builds a one-input/one-output BobClaim. Full
+`Transaction::validate(...)` verification runs in Usernet mode:
 
 ```sh
 cargo run -p epic_core --example receipt_stealth_demo
 ```
 
-Dies ist kein Ersatz für Wallet-Scan, UTXO-/TxHashset-Verbrauch oder
-Usernet-Block-End-to-End-Tests.
+This is not a replacement for wallet scan, UTXO/TxHashset consumption,
+or Usernet block end-to-end tests.
 
-Der Core-Builder `libtx::build::receipt_output(...)` prüft weiterhin nur das
-Receipt-Output-Format mit einem normalen Keychain-Blind. Die Terminal-Demo
-nutzt zusätzlich die klar als Forschungs-API markierten Builder für den
-Shared-Blind-Output und die BobClaim-Transaktion. Sie sind nicht wallet- oder
-netzwerkreif.
+The core builder `libtx::build::receipt_output(...)` still only checks
+the Receipt output format with a normal keychain blind. The terminal
+demo additionally uses the builders clearly marked as research APIs
+for the shared-blind output and the BobClaim transaction. They are
+not wallet- or network-ready.
 
-| Dienst | Standard |
+| Service | Default |
 | --- | --- |
-| Node-API | `127.0.0.1:23413` |
+| Node API | `127.0.0.1:23413` |
 | P2P | `127.0.0.1:23414` |
-| Wallet-Listener | `127.0.0.1:23415` |
+| Wallet listener | `127.0.0.1:23415` |
 | Stratum | `127.0.0.1:23416` |
 
-`run_test_miner` ist ausdrücklich für `usertesting` vorgesehen. Für echte
-Coinbase-Ausgaben benötigt er einen laufenden lokalen Wallet-Listener; ohne
-diesen dürfen keine wertvollen Daten erwartet werden.
+`run_test_miner` is explicitly intended for `usertesting`. For real
+coinbase spending it needs a running local wallet listener; without
+one no valuable data should be expected.
 
-## Einrichten
+## Setup
 
-Aus dem Projektwurzelverzeichnis:
+From the project root:
 
 ```sh
 mkdir -p .usernet/node
@@ -70,17 +71,18 @@ cd .usernet/node
 cargo run --manifest-path ../../upstream/epic/Cargo.toml -- --usernet server config
 ```
 
-In der erzeugten `epic-server.toml` ausschließlich für dieses lokale Usernet
-setzen:
+In the generated `epic-server.toml`, set exclusively for this local
+Usernet:
 
 ```toml
 run_test_miner = true
 test_miner_wallet_url = "http://127.0.0.1:23415"
 ```
 
-Dann Node und lokalen Wallet-Listener in getrennten Terminals starten. Der
-exakte Wallet-Befehl hängt vom eingecheckten `epic-wallet`-CLI-Stand ab und ist
-vor Ausführung mit `cargo run -- --help` zu prüfen. Anschließend:
+Then start node and local wallet listener in separate terminals. The
+exact wallet command depends on the checked-in `epic-wallet` CLI state
+and must be verified with `cargo run -- --help` before execution.
+Afterwards:
 
 ```sh
 cd .usernet/node
@@ -88,64 +90,61 @@ cargo run --manifest-path ../../upstream/epic/Cargo.toml -- \
   --usernet server --config_file epic-server.toml run
 ```
 
-Der Node darf nur an `127.0.0.1` gebunden und nie mit Mainnet-Konfiguration
-gestartet werden. Die Daten unter `.usernet/` sind Entwicklungsdaten und keine
-Wallet-Sicherung.
+The node must only bind to `127.0.0.1` and never be started with a
+Mainnet configuration. Data under `.usernet/` is development data, not
+a wallet backup.
 
-## Geplante Validierung
+## Planned Validation
 
-Nach der Core-Erweiterung muss das Usernet mindestens folgende echte Blöcke
-akzeptieren bzw. ablehnen:
+After the core extension, the Usernet must accept or reject at least
+the following real blocks:
 
-1. Spezial-Output mit Bob-Receipt-Key-Hash erzeugen.
-2. Gültigen `BobClaim` minen und dessen Kernel später abrufen.
-3. Gewöhnlichen Kernel für einen Spezial-Input im Mempool und beim Blockprozess
-   ablehnen.
-4. Falschen Receipt-Key, falsche Signatur, Replay und falsches Commitment
-   ablehnen.
+1. Create a special output with Bob's receipt-key hash.
+2. Mine a valid `BobClaim` and later retrieve its kernel.
+3. Reject a plain kernel for a special input in the mempool and during
+   block processing.
+4. Reject wrong receipt key, wrong signature, replay, and wrong
+   commitment.
 
-## Automatisierter lokaler Chain-Roundtrip (historisch)
+## Automated Local Chain Roundtrip (historical)
 
-Der Test `chain/tests/receipt_claim_roundtrip.rs` deckt einen echten
-lokalen Chain-Ablauf ohne Netzwerk ab: Er mint eine reife Usernet-Testcoinbase,
-mined Alice' Receipt-Funding-Transaktion, bestätigt den Receipt-UTXO, mined
-Bobs Claim in einem Folgeblock und prüft UTXO-Verbrauch, Zieloutput sowie die
-vollständige TxHashset-Validierung.
+The test `chain/tests/receipt_claim_roundtrip.rs` covers a real
+local chain flow without a network: it mints a mature Usernet test
+coinbase, mines Alice's receipt funding transaction, confirms the
+receipt UTXO, mines Bob's claim in a follow-up block, and verifies
+UTXO consumption, destination output, and full TxHashset validation.
 
 ```sh
 cargo test -p epic_chain --test receipt_claim_roundtrip
 ```
 
-Der Test startet keinen Node, keine Wallet und keinen Mempool. Daher ersetzt
-er keinen Mehrprozess-Usernet-Test und belegt weder P2P- noch Mainnet-
-Kompatibilität. **Er deckt genau eine Zahlung ab und ist daher nicht die
-in PROTOCOL.md §5 geforderte Akzeptanz-Demonstration.**
+The test starts no node, wallet, or mempool. It therefore does not
+replace a multi-process Usernet test and proves neither P2P nor
+Mainnet compatibility. **It covers exactly one payment and is therefore
+not the acceptance demonstration required by PROTOCOL.md §5.**
 
-## Akzeptanz-Test (in Arbeit)
+## Acceptance Test (in progress)
 
-Der zu schreibende Integrationstest
-`chain/tests/snip_acceptance.rs` muss den vollständigen
-3-Zahlungs-Flow demonstrieren:
+The integration test to be written,
+`chain/tests/snip_acceptance.rs`, must demonstrate the complete
+3-payment flow:
 
-1. Bob erzeugt einen Payment Descriptor (einmalig).
-2. Alice erzeugt 3 unabhängige Zahlungen aus dem
-   Descriptor — ohne Bob, ohne Kommunikation.
-3. Alle 3 Zahlungen werden in der lokalen Usernet-Chain
-   bestätigt.
-4. Bob scannt die Chain (ohne Kommunikation mit Alice),
-   detektiert alle 3 Zahlungen und bestimmt die Beträge.
-5. Bob claimt jede der 3 Zahlungen in einer eigenen
-   Transaktion.
-6. Alle 3 Claims werden in der Usernet-Chain bestätigt.
-7. Die End-Outputs sind ausschließlich von Bob
-   auszahlbar (jeder andere Spend-Versuch wird
-   abgewiesen).
+1. Bob generates a Payment Descriptor (once).
+2. Alice creates 3 independent payments from the
+   descriptor — without Bob, without communication.
+3. All 3 payments are confirmed in the local Usernet chain.
+4. Bob scans the chain (without communication with Alice),
+   detects all 3 payments, and determines the amounts.
+5. Bob claims each of the 3 payments in a separate
+   transaction.
+6. All 3 claims are confirmed in the Usernet chain.
+7. The final outputs are exclusively spendable by Bob
+   (any other spend attempt is rejected).
 
 ```sh
 cargo test -p epic_chain --test snip_acceptance
 ```
 
-Gemäß [PROTOCOL.md §6](../PROTOCOL.md): Ein
-erfolgreicher isolierter Krypto- oder Konsens-Test
-**ersetzt nicht** die vollständige Demonstration
-des Transaktionsflusses.
+Per [PROTOCOL.md §6](../PROTOCOL.md): a successful isolated crypto
+or consensus test **does not replace** the complete demonstration
+of the transaction flow.

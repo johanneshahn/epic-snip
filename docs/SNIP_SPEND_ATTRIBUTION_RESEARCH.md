@@ -1,257 +1,200 @@
 # SNIP: Spend Attribution — Research Report
 
-**Status: HISTORISCH — abgeschlossen und überholt durch
+**Status: HISTORICAL — completed and superseded by
 [PROTOCOL.md](../PROTOCOL.md).**
 
-Dieser Report dokumentiert die
-Spend-Attributionsforschung aus der Phase, in der
-es noch eine `AliceReclaim`-Mechanik gab. Die
-`AliceReclaim`-Mechanik wurde **vollständig
-entfernt**; der Report bleibt als historische
-Aufzeichnung erhalten.
+This report documents the spend-attribution research from the phase
+when an `AliceReclaim` mechanism still existed. The
+`AliceReclaim` mechanism was **completely removed**; the report
+remains as a historical record.
 
-**Die oberste Priorität dieses Projekts ist heute
-die vollständige 3-Zahlungs-Demonstration gemäß
-[PROTOCOL.md](../PROTOCOL.md) §5.** Alle
-folgenden Inhalte sind **historisch** und keine
-Anleitung für weitere Entwicklung.
+**The top priority of this project today is the complete
+3-payment demonstration per [PROTOCOL.md](../PROTOCOL.md) §5.**
+All following content is **historical** and not guidance for further
+development.
 
 ---
 
-## Zusammenfassung (historisch)
+## Summary (historical)
 
-**Alice kann kryptografisch verifizieren, dass eine
-bestätigte Transaktion ein gültiger BobClaim ist**
-(d.h., Bob hat die Ausgabe autorisiert),
-ausschließlich mit bestätigten Chain-Daten.
+**Alice can cryptographically verify that a confirmed
+transaction is a valid BobClaim** (i.e., Bob authorized the spend),
+using only confirmed chain data.
 
-**Alice kann den gemeinsamen Receipt-Output nicht
-selbst ausgeben.** Die Konsensvalidierung verlangt,
-dass jeder Input mit `features = Receipt`
-eins-zu-eins mit einem
-Receipt-Auflösungs-Kernel (derzeit
-`BobClaim`) übereinstimmt. Ein
-gewöhnlicher Kernel, der einen Receipt-Output
-ausgibt, wird mit
-`InvalidReceiptClaim` abgelehnt.
+**Alice cannot spend the shared Receipt output herself.**
+Consensus validation requires that every input with
+`features = Receipt` matches one-to-one with a
+receipt-resolution kernel (currently `BobClaim`). An
+ordinary kernel spending a Receipt output is rejected with
+`InvalidReceiptClaim`.
 
-Das Attributions-Modell lautet jetzt:
+The attribution model is now:
 
-- **Wenn Bob claimt:** Der Kernel hat
-  `features = BobClaim`, ein
-  `receipt_claim` ist vorhanden, und
-  `receipt_claim.receipt_public_key`
-  entspricht `hashes.bob` (dem Bob-spezifischen
-  Hash). Alice kann das aus öffentlichen Daten
-  verifizieren.
-- **Wenn jemand anderes eine Ausgabe
-  versucht:** Der Konsens lehnt die
-  Transaktion ab. Es gibt keinen
-  „Alice-Spend"-Pfad.
+- **When Bob claims:** the kernel has `features = BobClaim`, a
+  `receipt_claim` is present, and `receipt_claim.receipt_public_key`
+  matches `hashes.bob` (the Bob-specific hash). Alice can verify
+  this from public data.
+- **When anyone else attempts a spend:** consensus rejects the
+  transaction. There is no "Alice-Spend" path.
 
-## Q1: Kann Alice einen Bob-Claim von jeder
-anderen Ausgabe unterscheiden?
+## Q1: Can Alice distinguish a Bob claim from any other spend?
 
-**Ja, für bestätigte Transaktionen.** Wenn Alice
-eine bestätigte Transaktion beobachtet, die ihren
-gemeinsamen Receipt-Output ausgibt:
+**Yes, for confirmed transactions.** When Alice observes a
+confirmed transaction that spends her shared Receipt output:
 
-- Wenn `kernel.features` `BobClaim { fee }` und
-  `kernel.receipt_claim` vorhanden ist, prüft
-  sie `receipt_claim.receipt_public_key`
-  gegen `hashes.bob`. Bei Übereinstimmung
-  wurde der Claim kryptografisch von Bob
-  autorisiert (nur Bob besitzt den
-  `receipt_spend_secret_key`, der zur
-  Ableitung des `bob_receipt_key` benötigt
-  wird).
-- Jeder andere Kernel-Typ (Plain usw.) wäre
-  vom Konsens abgelehnt worden und kann
-  daher nicht in einem bestätigten Block
-  erscheinen.
+- If `kernel.features` is `BobClaim { fee }` and
+  `kernel.receipt_claim` is present, she checks
+  `receipt_claim.receipt_public_key` against `hashes.bob`. On a
+  match, the claim was cryptographically authorized by Bob
+  (only Bob holds the `receipt_spend_secret_key` needed to
+  derive `bob_receipt_key`).
+- Any other kernel type (Plain, etc.) would have been
+  rejected by consensus and cannot appear in a confirmed block.
 
-**Es existiert kein anderer Ausgabepfad.** Der
-gemeinsame Receipt-Output kann nur durch einen
-BobClaim konsumiert werden. Es gibt keine
-Alice-Reclaim, keine gewöhnliche Ausgabe, keinen
-alternativen Auflösungspfad.
+**There is no other spending path.** The shared Receipt output
+can only be consumed by a BobClaim. There is no Alice reclaim,
+no ordinary spend, no alternative resolution path.
 
-## Q2: Welche kryptografische Bindung
-verbindet den BobClaim spezifisch mit Bob?
+## Q2: What cryptographic binding ties the BobClaim specifically to Bob?
 
-Die Bindungskette lautet:
+The binding chain is:
 
-1. **Alice erstellt den Receipt** mit
+1. **Alice creates the Receipt** with
    `SharedReceiptKeyHashes { bob: H(bob_receipt_key) }`.
-2. **Bob leitet `bob_receipt_key` ab**
-   mit `receipt_spend_secret_key` (den nur Bob
-   kennt):
+2. **Bob derives `bob_receipt_key`** using
+   `receipt_spend_secret_key` (known only to Bob):
    `bob_receipt_key = receipt_spend_secret_key + tweak`
-   (wobei der Tweak aus Alices
-   Ephemeralschlüssel abgeleitet wird).
-3. **Bobs Claim** enthält
+   (where the tweak is derived from Alice's ephemeral key).
+3. **Bob's claim** contains
    `receipt_public_key = bob_receipt_key * G`.
-4. **Der Konsens validiert**
-   (in `verify_receipt_claim`):
+4. **Consensus validates** (in `verify_receipt_claim`):
    `hashes.bob == receipt_key_hash(claim.receipt_public_key)`.
 
-Die entscheidende Eigenschaft: **Nur Bob kann
-einen `receipt_public_key` erzeugen, dessen
-Hash `hashes.bob` entspricht**, da nur Bob den
-`receipt_spend_secret_key` kennt. Alice kann
-dies ohne Bobs Geheimes nicht fälschen.
+The decisive property: **only Bob can produce a
+`receipt_public_key` whose hash equals `hashes.bob`**, because
+only Bob knows `receipt_spend_secret_key`. Alice cannot forge
+this without Bob's secret.
 
-Zusätzlich verlangt die AgSig in
-`ReceiptClaim::verify()` den privaten
-`bob_receipt_key`, um
-`(path, original_commitment, kernel_excess, fee)`
-zu signieren. Selbst wenn Alice
-`bob_receipt_public_key` wüsste, könnte sie
-keine gültige Signatur erzeugen.
+Additionally, the AgSig in `ReceiptClaim::verify()` requires
+the private `bob_receipt_key` to sign
+`(path, original_commitment, kernel_excess, fee)`. Even if
+Alice knew `bob_receipt_public_key`, she could not produce a
+valid signature.
 
-## Q3: Kann Alice einen BobClaim fälschen
-(Bob imitieren)?
+## Q3: Can Alice forge a BobClaim (impersonate Bob)?
 
-**Nein.** Alice müsste einen
-`receipt_public_key` erzeugen, sodass
-`H(receipt_public_key) == hashes.bob` ist. Da
-`hashes.bob = H(bob_receipt_key)` und
-`bob_receipt_key` aus
-`receipt_spend_secret_key` abgeleitet wird
-(den Alice nicht kennt), kann Alice den
-korrekten `receipt_public_key` nicht
-berechnen.
+**No.** Alice would have to produce a
+`receipt_public_key` such that
+`H(receipt_public_key) == hashes.bob`. Since
+`hashes.bob = H(bob_receipt_key)` and `bob_receipt_key` is
+derived from `receipt_spend_secret_key` (which Alice does not
+know), Alice cannot compute the correct
+`receipt_public_key`.
 
-**Wichtiger getester Fall (Experiment C,
-Fall 2):** Alice *kennt*
-`bob_receipt_public_key` (es ist die Ausgabe von
-`derive_for_sender`). Sie kann es in den
-`ReceiptClaim` einfügen und der
-Hash-Check **besteht**. Sie kann jedoch
-keine gültige AgSig erzeugen, da sie
-`bob_receipt_key` (den privaten Schlüssel)
-nicht kennt. Der Signatur-Check
-**schlägt fehl**, und die Transaktion wird
-abgelehnt.
+**Important tested case (Experiment C, case 2):** Alice *knows*
+`bob_receipt_public_key` (it is the output of
+`derive_for_sender`). She can insert it into the
+`ReceiptClaim` and the **hash check passes**. However, she
+cannot produce a valid AgSig because she does not know
+`bob_receipt_key` (the private key). The signature check
+**fails**, and the transaction is rejected.
 
-**Experimentelle Verifizierung:**
-- **Fall 1 (zufälliger PubKey):**
-  Hash-Check schlägt fehl. Abgelehnt.
-- **Fall 2 (korrekter Bob-PubKey +
-  gefälschte Signatur):** Hash-Check
-  besteht, AgSig schlägt fehl. Abgelehnt.
-- **Fall 3 (kopierte öffentliche Felder
-  aus vorherigem Claim):** Signatur an
-  anderen Kernel gebunden. Abgelehnt.
-- **Fall 4 (Alices eigene Geheimnisse):**
-  Hash-Check schlägt fehl. Abgelehnt.
-- **Fall 5 (Alice-kontrolliertes Ziel):**
-  Defense-in-Depth — selbst wenn alle Checks
-  bestünden, wäre das Ziel
-  Alice-kontrolliert (ohne gültigen Claim
-  nicht beobachtbar).
+**Experimental verification:**
+- **Case 1 (random pubkey):** hash check fails. Rejected.
+- **Case 2 (correct Bob pubkey + forged signature):** hash
+  check passes, AgSig fails. Rejected.
+- **Case 3 (copied public fields from a previous claim):**
+  signature bound to a different kernel. Rejected.
+- **Case 4 (Alice's own secrets):** hash check fails.
+  Rejected.
+- **Case 5 (Alice-controlled destination):** defense in
+  depth — even if all checks passed, the destination would be
+  Alice-controlled (not observable without a valid claim).
 
-## Q4: Was passiert, wenn Bob den
-`receipt_claim` aus seinem Kernel
-weglässt?
+## Q4: What happens if Bob omits `receipt_claim` from his kernel?
 
-Die Konsensvalidierung lehnt den Kernel ab,
-weil `ReceiptClaim` ein erforderliches Feld
-für `features = BobClaim` ist. Ohne
-`receipt_claim` wird die Transaktion mit
-`MissingReceiptClaim` abgelehnt.
+Consensus validation rejects the kernel because
+`ReceiptClaim` is a required field for
+`features = BobClaim`. Without `receipt_claim`, the
+transaction is rejected with `MissingReceiptClaim`.
 
-## Q5: Kann ein Außenstehender erkennen,
-dass ein Output von Bob claimt wurde?
+## Q5: Can an outsider recognize that an output was claimed by Bob?
 
-**Ja, das ist gewollt.** Der
-`BobClaim`-Kernel ist ein
-öffentlich einsehbarer Spezial-Kernel.
-Ein Außenstehender kann erkennen:
-- dass ein Receipt-Output ausgab,
-- dass die Ausgabe durch einen
-  `BobClaim`-Kernel erfolgte,
-- dass die Signatur gültig ist.
+**Yes, this is intended.** The `BobClaim` kernel is a
+publicly visible special kernel. An outsider can recognize:
+- that a Receipt output was spent,
+- that the spend occurred via a `BobClaim` kernel,
+- that the signature is valid.
 
-**Nein, nicht was Bob daraus
-wurde.** Der Zieloutput des Claims ist ein
-gewöhnlicher Output, der nicht im
-`BobClaim`-Kernel referenziert wird.
-Ein Außenstehender kann die Claim-Transaktion
-nicht zu Bobs späteren Ausgaben
-korrelieren.
+**No, not what Bob received.** The claim's destination output
+is an ordinary output that is not referenced in the
+`BobClaim` kernel. An outsider cannot correlate the claim
+transaction with Bob's later spends.
 
-## Test-Matrix
+## Test Matrix
 
-| Test | Ziel | Ergebnis |
+| Test | Goal | Result |
 | --- | --- | --- |
-| A | Gültiger BobClaim wird akzeptiert | ✅ PASS |
-| B1 | Alice-Spend abgewiesen | ✅ PASS |
-| B2 | Alice-Fälschung abgewiesen | ✅ PASS |
-| B3 | Bob-Spend mit Metadaten abgewiesen | ✅ PASS |
-| B4 | Bob-Spend ohne Metadaten abgewiesen | ✅ PASS |
-| C | 5 Fälle: Bob-Imitation abgewiesen | ✅ PASS |
-| C-full | Volle Chain-Roundtrip + Klassifizierung | ✅ PASS |
-| D1 | Persistenz: Receipt-Hashes über Serialisierung | ✅ PASS |
-| D2 | Kernel-Struktur: BobClaim-Transkript | ✅ PASS |
-| D3 | Unfälschbarkeit: Hash-Bindung | ✅ PASS |
-| D4 | Unfälschbarkeit: AgSig-Bindung | ✅ PASS |
-| E | Statische Analyse: keine Alice-Spend-Pfade | ✅ PASS |
-| Bonus | Vollständige Attributionskette | ✅ PASS |
+| A | Valid BobClaim accepted | ✅ PASS |
+| B1 | Alice spend rejected | ✅ PASS |
+| B2 | Alice forgery rejected | ✅ PASS |
+| B3 | Bob spend with metadata rejected | ✅ PASS |
+| B4 | Bob spend without metadata rejected | ✅ PASS |
+| C | 5 cases: Bob impersonation rejected | ✅ PASS |
+| C-full | Full chain roundtrip + classification | ✅ PASS |
+| D1 | Persistence: receipt hashes over serialization | ✅ PASS |
+| D2 | Kernel structure: BobClaim transcript | ✅ PASS |
+| D3 | Unforgability: hash binding | ✅ PASS |
+| D4 | Unforgability: AgSig binding | ✅ PASS |
+| E | Static analysis: no Alice-spend paths | ✅ PASS |
+| Bonus | Full attribution chain | ✅ PASS |
 
-**Gesamt: 13/13 PASS.**
+**Total: 13/13 PASS.**
 
-## Schlussfolgerung (historisch)
+## Conclusion (historical)
 
-Das Spend-Attributionsmodell ist
-**gültig**. Der BobClaim-Mechanismus ist
-unanfällig, es gibt keinen Umgehungspfad,
-und die Attributierung ist aus öffentlichen
-Chain-Daten verifizierbar.
+The spend-attribution model is **valid**. The BobClaim
+mechanism is unforgable, there is no bypass path, and
+attribution is verifiable from public chain data.
 
-## Überführung in das neue SNIP-Protokoll
+## Transition to the New SNIP Protocol
 
-Die hier dokumentierten Eigenschaften bleiben **in Kraft**
-und bilden das Fundament des neuen SNIP-Protokolls:
+The properties documented here remain **in force** and form
+the foundation of the new SNIP protocol:
 
-- BobClaim bleibt der **primäre** Ausgabepfad für
-  Receipt-Outputs.
-- Die AgSig-Bindung bleibt die Grundlage dafür, dass nur
-  Bob Claimen kann.
-- Die Hash-Bindung an `SharedReceiptKeyHashes.bob` bleibt
-  die Grundlage dafür, dass Alice und Außenstehende die
-  Attributierung verifizieren können.
+- BobClaim remains the **primary** spending path for
+  Receipt outputs.
+- The AgSig binding remains the basis for ensuring that only
+  Bob can claim.
+- The hash binding to `SharedReceiptKeyHashes.bob` remains
+  the basis for Alice and outsiders to verify attribution.
 
-**Änderung für das SNIP-Protokoll:**
-- Der Alice-Reclaim-Pfad nutzt den
-  **gewöhnlichen `Plain`-Kernel** aus Epic Cash
-  (PROTOCOL.md §3.9). Es gibt keinen separaten
-  `AliceReclaim`-Kerneltyp.
-- Eine Konsensanpassung ist erforderlich, um
-  `Plain`-Kernels für `Receipt`-Inputs zu
-  erlauben (siehe CURRENT_STEP.md, Optionen A
-  und B).
-- First-Confirmed-Spend-Wins: Wenn Bob bereits
-  claimed hat, wird ein späterer Alice-Spend
-  abgewiesen (`AlreadySpent`). Umgekehrt gilt
-  dasselbe.
+**Change for the SNIP protocol:**
+- The Alice-reclaim path uses the **ordinary `Plain` kernel**
+  from Epic Cash (PROTOCOL.md §3.9). There is no separate
+  `AliceReclaim` kernel type.
+- A consensus adjustment is required to allow `Plain` kernels
+  for `Receipt` inputs (see CURRENT_STEP.md, options A and B).
+- First-Confirmed-Spend-Wins: if Bob has already claimed, a
+  later Alice spend is rejected (`AlreadySpent`). The reverse
+  holds as well.
 
-**Neu für das SNIP-Protokoll:**
-- Bob muss die Zahlungen **durch Scannen der Chain**
-  erkennen (nicht durch Wallet-Nachricht).
-- Bob muss **drei unabhängige Zahlungen** parallel
-  detektieren und claimen können.
-- Die End-Outputs müssen **ausschließlich von Bob**
-  auszahlbar sein.
-- Es muss eine `PaymentDescriptor`-Abstraktion geben.
-- Es muss eine neue Integrationstest geben, die den
-  3-Zahlungs-Flow end-to-end demonstriert.
-- Alice kann aus der Chain verifizieren, dass Bob die
-  Zahlungen übernommen hat (PROTOCOL.md §3.8).
-- Alice kann die Shared Outputs jederzeit selbst
-  beanspruchen, solange Bob sie nicht bereits übertragen
-  hat (PROTOCOL.md §3.9).
+**New for the SNIP protocol:**
+- Bob must recognize payments **by scanning the chain**
+  (not via wallet message).
+- Bob must **detect and claim three independent payments**
+  in parallel.
+- The final outputs must be **exclusively spendable by
+  Bob**.
+- A `PaymentDescriptor` abstraction must exist.
+- A new integration test must demonstrate the 3-payment
+  flow end-to-end.
+- Alice can verify from the chain that Bob has taken over
+  the payments (PROTOCOL.md §3.8).
+- Alice can claim the shared outputs herself at any time,
+  as long as Bob has not already transferred them
+  (PROTOCOL.md §3.9).
 
-Diese neuen Punkte stehen in
-[CURRENT_STEP.md](../CURRENT_STEP.md) und
+These new points are in
+[CURRENT_STEP.md](../CURRENT_STEP.md) and
 [PROTOCOL.md](../PROTOCOL.md).

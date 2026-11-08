@@ -1,67 +1,60 @@
-# Kryptografische Grundlage — überholt durch PROTOCOL.md
+# Cryptographic Foundation — superseded by PROTOCOL.md
 
-**Status: HISTORISCH und überholt durch
+**Status: HISTORICAL and superseded by
 [PROTOCOL.md](../PROTOCOL.md).**
 
-Dieses Dokument beschrieb die
-Kryptografie-Grundlagen des In-Memory-POC. Es
-ist **nicht** die Kryptografie-Spezifikation des
-in PROTOCOL.md definierten Ziel-Protokolls.
+This document described the cryptographic foundations of the
+in-memory POC. It is **not** the cryptography specification of
+the target protocol defined in PROTOCOL.md.
 
 ---
 
-## Historischer Inhalt
+## Historical Content
 
-Dieses Modul verwendete die lokalen
-Git-Submodule `upstream/epic` und
-`upstream/epic-wallet` als Referenz. Beide
-pinten in ihren `Cargo.lock`-Dateien dieselbe
-`EpicCash/rust-secp256k1-zkp`-Revision
-`1131a20920576413cd949e012a160561080324c1`;
-diese Revision ist auch hier explizit
-gepinnt. Verwendet wurden ausschließlich die
-getesteten Schnittstellen
+This module used the local Git submodules `upstream/epic` and
+`upstream/epic-wallet` as reference. Both pinned the same
+`EpicCash/rust-secp256k1-zkp` revision
+`1131a20920576413cd949e012a160561080324c1` in their
+`Cargo.lock` files; this revision is also explicitly pinned here.
+Only the tested interfaces
 `Secp256k1::commit`, `commit_sum`,
-`verify_commit_sum`, `ecdh::SharedSecret` und
-`aggsig::{sign_single, verify_single}`.
+`verify_commit_sum`, `ecdh::SharedSecret` and
+`aggsig::{sign_single, verify_single}` were used.
 
-`src/crypto.rs` kapselte die Pedersen- und
-AgSig-Primitiven. `src/one_sided.rs`
-verwendete zusätzlich `ECDH` über
-`SharedSecret` zur Ableitung eines
-gemeinsamen Blind. Der Blind wurde mit
-Domain-Separator, Ephemeralschlüssel,
-Receiver-Schlüssel, Betrag und Zählerwert
-domänengetrennt gehasht, bis ein gültiger
-secp256k1-Skalar erzeugt wurde.
+`src/crypto.rs` encapsulated the Pedersen and
+AgSig primitives. `src/one_sided.rs`
+additionally used `ECDH` via
+`SharedSecret` to derive a shared blind. The blind was hashed
+in a domain-separated way with domain separator, ephemeral key,
+receiver key, amount, and counter value until a valid
+secp256k1 scalar was produced.
 
-Die AgSig-Autorisierung band `payment_id`,
-Pfad (`claim`/`sender-spend`), Ursprungs-
-Commitment, Ziel-Commitment und Betrag. So
-konnte eine Claim-Autorisierung weder für
-`sender_spend` noch mit verändertem Kontext
-verifiziert werden.
+The AgSig authorization bound `payment_id`,
+path (`claim`/`sender-spend`), origin
+commitment, destination commitment, and amount. Thus a
+claim authorization could not be verified for
+`sender_spend` or with a modified context.
 
-Es existierten absichtlich keine Blöcke, keine
-UTXO-Datenbank, keine Netzwerkkommunikation,
-keine Wallet-Schlüsselverwaltung und keine
-echten Consensus-Objekte.
+There were deliberately no blocks, no
+UTXO database, no network communication,
+no wallet key management, and no
+real consensus objects.
 
-## Relation zur neuen SNIP-Spezifikation
+## Relation to the new SNIP specification
 
-Die hier dokumentierten Primitiven sind weiterhin
-die Grundlage der in `upstream/epic`
-implementierten Kryptografie:
+The primitives documented here are still the
+foundation of the cryptography implemented in
+`upstream/epic`:
 
-| POC-Primitiv | SNIP-Äquivalent in `upstream/epic` |
+| POC primitive | SNIP equivalent in `upstream/epic` |
 | --- | --- |
-| `ReceiverKey` (secp256k1) | `receipt_spend_secret_key` + `scan_public_key` in Bobs Descriptor |
-| `ECDH(a, B)` → gemeinsamer Blind | `ECDH(r_i, S)` → `h_i` + `q_i` (Receipt-Claim-Design) |
-| Pedersen Commitment | Output-Commitment + Range Proof |
-| AgSig (single) | `ReceiptClaim`-Signatur über `(path, original_commitment, kernel_excess, fee)` |
-| `PendingEnvelope` (Wallet-Nachricht) | **Nicht mehr verwendet** — Bob scannt die Chain direkt |
+| `ReceiverKey` (secp256k1) | `receipt_spend_secret_key` + `scan_public_key` in Bob's descriptor |
+| `ECDH(a, B)` → shared blind | `ECDH(r_i, S)` → `h_i` + `q_i` (Receipt-Claim design) |
+| Pedersen commitment | Output commitment + range proof |
+| AgSig (single) | `ReceiptClaim` signature over `(path, original_commitment, kernel_excess, fee)` |
+| `PendingEnvelope` (wallet message) | **No longer used** — Bob scans the chain directly |
 
-Die konkrete Stealth-Ableitung und die
-`BobClaim`-Konsensregeln stehen in
+The concrete stealth derivation and the
+`BobClaim` consensus rules are in
 [receipt-claim-design.md](receipt-claim-design.md)
-und in `upstream/epic/core/src/receipt_claim.rs`.
+and in `upstream/epic/core/src/receipt_claim.rs`.

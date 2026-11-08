@@ -1,32 +1,34 @@
-# Bedrohungsmodell
+# Threat Model
 
-## Angenommene Garantien des Modells
+## Assumed Guarantees of the Model
 
-- Nur der Besitzer des gemeinsamen Blind (Bob nach erfolgreichem Scan) kann
-  den Output claimen.
-- Alice kann den Output konkurrierend ausgeben, solange Bob noch nicht
-  geclaimt hat — dies ist ein bewusster trade-off des nicht-interaktiven
-  Ablaufs.
-- Die AgSig-Autorisierung ist an `payment_id`, Pfad (`claim`/`sender-spend`),
-  Commitment und Ziel-Commitment gebunden.
-- Der `OneSidedLedger` verarbeitet den Verbrauch eines Outputs atomar.
+- Only the holder of the shared blind (Bob after a successful scan) can
+  claim the output.
+- Alice can spend the output competitively as long as Bob has not
+  yet claimed — this is a conscious trade-off of the non-interactive
+  flow.
+- The AgSig authorization is bound to `payment_id`, path (`claim`/
+  `sender-spend`), commitment, and destination commitment.
+- The `OneSidedLedger` processes the spending of an output atomically.
 
-## Nicht abgedeckt
+## Not Covered
 
-- Konsens- und Implementierungsfehler in Epic Cash oder Abweichungen durch Forks/Reorgs.
-- Diebstahl oder Verlust von Schlüsseln, kompromittierte Endgeräte und Wallet-Backups.
-- DoS, Zensur, Gebührenmarkt und Mempool-Policy.
-- Die Zuverlässigkeit des externen `PendingEnvelope`-Zustellkanals: verloren
-  oder manipuliert werden kann das Envelope nicht erkannt werden.
-- Seitenkanäle, Zufallszahlengüte, Serialisierungsfehler und kryptografische Audits.
-- Schutz gegen einen bösartigen Sender vor der Aufnahme eines Outputs in eine
-  reale Blockchain.
-- Formale Sicherheitsanalyse der ECDH-Blind-Ableitung.
+- Consensus and implementation errors in Epic Cash or deviations due to
+  forks/reorgs.
+- Theft or loss of keys, compromised endpoints and wallet backups.
+- DoS, censorship, fee market and mempool policy.
+- Reliability of the external `PendingEnvelope` delivery channel: a lost
+  or tampered envelope cannot be detected.
+- Side channels, randomness quality, serialization errors, and
+  cryptographic audits.
+- Protection against a malicious sender before an output is included in a
+  real blockchain.
+- Formal security analysis of the ECDH blind derivation.
 
-## Sicherheitskritische Regel
+## Security-Critical Rule
 
-Die AgSig-Autorisierung darf in einer echten Chain nicht bloße Metadaten
-sein. Sie muss Teil der Konsensvalidierung des Input-Pfads sein und dauerhaft
-an den konkreten Output gebunden werden. Andernfalls könnte ein Angreifer eine
-Autorisierung wiederverwenden oder Alice könnte konkurrierend ausgeben, ohne
-dass Bob dies erkennen kann.
+The AgSig authorization must not be mere metadata in a real chain.
+It must be part of the consensus validation of the input path and
+permanently bound to the concrete output. Otherwise an attacker could
+reuse an authorization or Alice could spend competitively without
+Bob being able to detect it.
