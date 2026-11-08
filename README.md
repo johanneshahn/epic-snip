@@ -189,6 +189,7 @@ The objective was technical feasibility, not production deployment.
 - [docs/SNIP_SPEND_ATTRIBUTION_RESEARCH.md](docs/SNIP_SPEND_ATTRIBUTION_RESEARCH.md) — attribution research
 - [docs/EPIC_PROTOCOL_CHANGES.md](docs/EPIC_PROTOCOL_CHANGES.md) — protocol changes assessment
 - [docs/SNIP_PRIVACY_ATTACK_VECTORS.md](docs/SNIP_PRIVACY_ATTACK_VECTORS.md) — privacy and linkability assessment
+- [docs/SNIP_PRIVACY_RESEARCH.md](docs/SNIP_PRIVACY_RESEARCH.md) — privacy research (feasibility analysis)
 
 ---
 
