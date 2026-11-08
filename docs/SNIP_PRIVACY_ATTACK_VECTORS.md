@@ -135,6 +135,15 @@ design — Bob publishes it to enable payments.
 distribution mechanism (out of scope). Descriptor rotation is possible
 but not implemented.
 
+**Important limitation:** Knowledge of the public descriptor alone does
+not prove that an observer can compute the secret ECDH tweak for a
+given payment. The stealth metadata (ephemeral hint) is public, but
+deriving the tweak requires Bob's private scan secret, which is not
+available to an observer. Whether passive correlation to Bob is
+actually possible depends on the concrete key derivation and must be
+investigated separately. The attack is classified as Medium/Plausible
+but has not been demonstrated.
+
 **Verification status:** Plausible (design property, not demonstrated as
 exploitable).
 
